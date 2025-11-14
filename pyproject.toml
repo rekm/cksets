@@ -1,0 +1,10 @@
+[build-system]
+requires = ["scikit-build-core", "pybind11", "setuptools"]
+build-backend = "scikit-build-core.build"
+
+[project]
+name = "clustering-cpp"
+version = "0.1.0"
+authors = [{ name="René Kmiecinski" }]
+requires-python = ">=3.9"
+dependencies = []
