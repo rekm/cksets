@@ -1,0 +1,40 @@
+@PACKAGE_INIT@
+
+# ------------------------------------------------------------
+# Provide version information
+# ------------------------------------------------------------
+set(KSETS_VERSION "@PROJECT_VERSION@")
+
+# ------------------------------------------------------------
+# Ensure required dependencies are available
+# (These come from CPM and config scripts installed by your
+# project during install)
+# ------------------------------------------------------------
+include(CMakeFindDependencyMacro)
+
+# Dependencies exported by configuration.cmake
+find_dependency(seqan3 REQUIRED)
+find_dependency(sharg REQUIRED)
+find_dependency(hibf REQUIRED)
+
+# Optional dependencies (pybind11 for bindings)
+# Use QUIET to avoid errors if not needed by the user
+find_dependency(pybind11 QUIET)
+
+# ------------------------------------------------------------
+# Load the exported KSets targets
+# ------------------------------------------------------------
+include("${CMAKE_CURRENT_LIST_DIR}/KSetsTargets.cmake")
+
+# ------------------------------------------------------------
+# Provide namespace alias for convenience
+# (not required but nice to have)
+# ------------------------------------------------------------
+set(KSETS_NAMESPACE ksets::)
+
+# ------------------------------------------------------------
+# Print diagnostics if in verbose mode
+# ------------------------------------------------------------
+if(NOT KSets_FIND_QUIETLY)
+    message(STATUS "Found KSets version ${KSETS_VERSION}")
+endif()
