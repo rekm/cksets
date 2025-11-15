@@ -1,0 +1,14 @@
+name: cksets_build
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - matplotlib
+  - pandas
+  - ipykernel
+  - seaborn
+  - compilers
+  - ipywidgets
+  - plotly
+  - cmake=3.26
+  

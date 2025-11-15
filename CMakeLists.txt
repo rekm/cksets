@@ -9,13 +9,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CPM_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/external")
-
+set(Python3_EXECUTABLE "" CACHE FILEPATH "Path to Python interpreter")
+find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 
 # ---------------------------------------
 # CPM Package Manager
 # ---------------------------------------
 set(CPM_DOWNLOAD_LOCATION "${CMAKE_SOURCE_DIR}/external/CPM.cmake")
-include(${CPM_DOWNLOAD_LOCATION})
+#include(${CPM_DOWNLOAD_LOCATION})
 
 
 # ---------------------------------------
@@ -30,11 +31,13 @@ add_library(ksets
 
 target_include_directories(ksets
     PUBLIC
-        ${CMAKE_SOURCE_DIR}/include
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
 )
 
+
 target_link_libraries(ksets
-    PUBLIC
+    PRIVATE
         ksets::interface   # brings seqan3 + hibf + sharg
 )
 
@@ -44,7 +47,7 @@ add_library(ksets::ksets ALIAS ksets)
 # Executables (main programs)
 # ---------------------------------------
 add_executable(cksets src/main/ksets.cpp)
-target_link_libraries(cksets PRIVATE ksets)
+target_link_libraries(cksets PRIVATE ksets sharg::sharg)
 include(${CMAKE_SOURCE_DIR}/cmake/configuration.cmake)
 
 # ---------------------------------------

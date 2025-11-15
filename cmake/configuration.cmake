@@ -103,7 +103,7 @@ endif()
 # Interface target
 # ----------------------------------------------------------------------------
 
-add_library(ksets_interface INTERFACE)
+add_library(ksets_interface INTERFACE IMPORTED)
 
 target_include_directories(ksets_interface
     INTERFACE
@@ -113,7 +113,7 @@ target_include_directories(ksets_interface
 target_link_libraries(ksets_interface
     INTERFACE
         seqan3::seqan3
-        hibf::hibf
+        seqan::hibf
         sharg::sharg
 )
 
