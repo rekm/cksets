@@ -96,11 +96,14 @@ CPMDeclarePackage (ibf-fpga
                    DOWNLOAD_ONLY YES
                    QUIET YES)
 
+# pybind11 
+set (KSETS_PYBIND11_VERSION f5fbe867d2d26e4a0a9177a51f6e568868ad3dc8 CACHE STRING "")
+CPMDeclarePackage (pybind11
+                   NAME pybind11
+                   GIT_TAG ${KSETS_PYBIND11_VERSION} # main
+                   GITHUB_REPOSITORY pybind/pybind11
+                   SYSTEM TRUE)
+
 # cmake-format: on
 
-# pybind11 -------------------
-CPMAddPackage(
-    NAME pybind11
-    GITHUB_REPOSITORY pybind/pybind11
-    VERSION 2.12.0
-)
+

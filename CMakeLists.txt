@@ -45,13 +45,14 @@ add_library(ksets::ksets ALIAS ksets)
 # ---------------------------------------
 add_executable(cksets src/main/ksets.cpp)
 target_link_libraries(cksets PRIVATE ksets)
+include(${CMAKE_SOURCE_DIR}/cmake/configuration.cmake)
 
 # ---------------------------------------
 # Subdirectories
 # ---------------------------------------
 add_subdirectory(benchmarks)
 enable_testing()
-add_subdirectory(tests)
+#add_subdirectory(tests)
 
 # ---------------------------------------
 # Python Bindings

@@ -61,8 +61,8 @@ endif ()
 # ----------------------------------------------------------------------------
 
 set (CPM_INDENT "  CMake Package Manager CPM: ")
-include (${KSETS_SOURCE_DIR}/cmake/CPM.cmake)
-CPMUsePackageLock (${KSETS_SOURCE_DIR}/cmake/package-lock.cmake)
+include (${KSets_SOURCE_DIR}/cmake/CPM.cmake)
+CPMUsePackageLock (${KSets_SOURCE_DIR}/cmake/package-lock.cmake)
 
 
 # ----------------------------------------------------------------------------
