@@ -8,7 +8,8 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CPM_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/external")
+#set(CPM_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/external")
+set(CPM_SOURCE_CACHE "${CMAKE_SOURCE_DIR}/external") # That is close to what I want to achieve
 set(Python3_EXECUTABLE "" CACHE FILEPATH "Path to Python interpreter")
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 
@@ -22,6 +23,8 @@ set(CPM_DOWNLOAD_LOCATION "${CMAKE_SOURCE_DIR}/external/CPM.cmake")
 # ---------------------------------------
 # Core library
 # ---------------------------------------
+include(${CMAKE_SOURCE_DIR}/cmake/configuration.cmake)
+
 add_library(ksets
     src/clustering.cpp
     src/clustering/ksets.cpp
@@ -48,7 +51,7 @@ add_library(ksets::ksets ALIAS ksets)
 # ---------------------------------------
 add_executable(cksets src/main/ksets.cpp)
 target_link_libraries(cksets PRIVATE ksets sharg::sharg)
-include(${CMAKE_SOURCE_DIR}/cmake/configuration.cmake)
+
 
 # ---------------------------------------
 # Subdirectories
