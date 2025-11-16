@@ -1,5 +1,10 @@
 
 #pragma once
+#include <string>
+#include <unordered_map> 
+#include <hashing/murmur_hash.hpp>
+
+using Histogram = std::unordered_map<std::string, int, ksets::MurmurHash>;
 
 namespace ksets
 {

@@ -11,4 +11,6 @@ dependencies:
   - ipywidgets
   - plotly
   - cmake=3.26
+  - scikit-build-core
+  - pip
   

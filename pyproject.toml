@@ -1,10 +1,34 @@
 [build-system]
-requires = ["scikit-build-core", "pybind11", "setuptools"]
-build-backend = "scikit-build-core.build"
+requires = [
+    "scikit-build-core>=0.8.0",
+    "pybind11",    # optional if you fetch via CPM, but harmless
+]
+build-backend = "scikit_build_core.build"
 
 [project]
-name = "clustering-cpp"
+name = "ksets-cpp"
 version = "0.1.0"
-authors = [{ name="René Kmiecinski" }]
+description = "C++ accelerated K-Sets clustering with pybind11 bindings"
+authors = [{ name = "René Kmiecinski" }]
 requires-python = ">=3.9"
 dependencies = []
+
+[project.urls]
+Source = "https://git.imp.fu-berlin.de/rwk53376/cksets"
+Issues = "https://git.imp.fu-berlin.de/rwk53376/cksets/issues"
+
+# ==============================
+# scikit-build configuration
+# ==============================
+[tool.scikit-build]
+# Where the python extension target lives
+cmake.source-dir = "."
+
+# Cache CMake files for speed
+build-dir = "build"
+
+# You already rely on top-level CMakeLists
+cmake.minimum-version = "3.25"
+
+# Make sure wheels include native arch tags
+wheel.py-api = ""
