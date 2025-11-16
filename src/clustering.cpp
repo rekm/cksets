@@ -19,10 +19,13 @@ namespace ksets
         
         if (max_iter == 0)
             max_iter = 50;
-
+        
+        std::vector<int> labels_cur(data.size());
+        std::vector<int> labels_prev(data.size());
         // 2. Build initial histograms
         for (size_t i = 0; i < data.size(); i++) {
             int cluster = i % K;
+            labels_cur[i] = cluster;
 
             for (auto const& token : data[i]) {
                 histogram_vec[cluster][token]++;  
@@ -30,8 +33,7 @@ namespace ksets
         }
         // 3. hash_representation
 
-        std::vector<int> labels_prev;
-        std::vector<int> labels_cur;
+        
         auto hist_prev = histograms;
         double sdth_old = 0.0;
         double sdth = std::numeric_limits<double>::max();
@@ -45,7 +47,13 @@ namespace ksets
             labels_prev = labels_cur;
             sumd_prev = sumd;
             //4.1 Compute distances & labels
-            
+            for (size_t i = 0; i < data.size(); i++) {
+                auto cluster = labels_prev[i];
+
+                for (auto const& token : data[i]) {
+                    int yval = histogram_vec[cluster][token];  
+                }
+            }
             //4.2 Stop if error increases
             if (sdth > sdth_old) {
                 labels_cur = labels_prev;
@@ -67,6 +75,7 @@ namespace ksets
     std::vector<std::vector<int>> to_hist_output_format(
             std::vector<Histogram> const &hist_vec,
             int max_hist_length){
+        // The max hist length is nonsense
         std::vector<std::vector<int>> out;
         out.reserve(hist_vec.size());
 
