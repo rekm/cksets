@@ -3,6 +3,8 @@
 #include <pybind11/numpy.h>
 
 #include <clustering/clustering.hpp>
+#include <memory/pool_allocator.hpp>
+#include <histogram/map_histogram_collection.hpp>
 
 namespace py = pybind11;
 
@@ -48,10 +50,16 @@ py::tuple cluster_binding(py::array input,
     }
 
     // ---- Call C++ algorithm ----
-    ksets::ClusterResult r = ksets::cluster_cpp(rows, K, max_hist, hist_cpp, max_iter);
+    //auto hash_policy = ksets::hashing::HashPolicy<ksets::hashing::MurmurHash>{12345}; // <- does not work because its explicit
+    auto hash_policy = ksets::hashing::HashPolicy<ksets::hashing::MurmurHash>(ksets::hashing::MurmurHash(12345));
+    //auto alloc_policy = ksets::memory::PoolAllocator<std::pair<const std::string,int>>{};
+    ksets::histogram::MapHistogramCollection<decltype(hash_policy)> hist_collection(K, hash_policy);//, alloc_policy);
+    ksets::ClusterResult r = ksets::cluster_cpp(rows, K, max_hist, hist_collection, max_iter);
 
     return py::make_tuple(r.labels, r.histograms, r.sumd);
 }
+
+
 
 PYBIND11_MODULE(_ksets_cpp, m)
 {

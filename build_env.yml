@@ -13,4 +13,6 @@ dependencies:
   - cmake=3.26
   - scikit-build-core
   - pip
+  - pip:
+    - spdlog
   

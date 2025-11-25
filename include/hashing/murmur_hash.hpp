@@ -6,6 +6,7 @@
 #include "hashing/MurmurHash3.h"
 
 namespace ksets {
+namespace hashing {
 
     struct MurmurHash
     {
@@ -20,4 +21,5 @@ namespace ksets {
         }
     };
 
+}
 }
