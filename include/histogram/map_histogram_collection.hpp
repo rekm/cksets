@@ -23,6 +23,10 @@ public:
         histograms_[cluster].increment(token);
     }
 
+    void decrement(size_t cluster, const std::string& token) {
+        histograms_[cluster].decrement(token);
+    }
+
     int get(size_t cluster, const std::string& token) const {
         return histograms_[cluster].get(token);
     }

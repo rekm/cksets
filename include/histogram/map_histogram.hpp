@@ -32,6 +32,17 @@ public:
         freq[token]++;
     }
 
+    void decrement(const std::string& token) {
+        auto it = freq.find(token);
+        if (it == freq.end()) {
+            return; // nothing to undo
+        }
+
+        if (--it->second == 0) {
+            freq.erase(it); // avoid zombie keys with value 0
+        }
+    }
+
     int get(const std::string& token) const {
         auto it = freq.find(token);
         return it != freq.end() ? it->second : 0;
