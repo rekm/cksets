@@ -221,7 +221,7 @@ ClusterResult cluster_cpp(
             for (auto it = prev_histogram_changes.rbegin(); it != prev_histogram_changes.rend(); ++it){
                 size_t row_idx, old_cluster, new_cluster;
                 std::tie(row_idx, old_cluster, new_cluster) = *it;
-                //labels_cur[row_idx] = old_cluster;
+                labels_cur[row_idx] = old_cluster;
                 for (auto const& token : data[row_idx]) {
                     histograms.decrement(new_cluster, token);
                     if ( j!= 0)
@@ -238,7 +238,7 @@ ClusterResult cluster_cpp(
         for (auto const& change : histogram_changes){
             size_t row_idx, old_cluster, new_cluster;
             std::tie(row_idx, old_cluster, new_cluster) = change;
-            labels_cur[row_idx] = new_cluster;
+            //labels_cur[row_idx] = new_cluster;
             #ifdef DEBUG_DESPERATION
                 std::cout << std::format("D_change[{0:d}] = {1:d} -> {2:d}\n", row_idx, old_cluster, new_cluster);
             #endif
