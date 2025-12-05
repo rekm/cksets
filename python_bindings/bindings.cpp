@@ -9,8 +9,8 @@
 namespace py = pybind11;
 
 
-// Initial chatgtp hint for exactly mimiking the function signature 
-// of ksets,  Accessed 15.11.25 
+// Initial chatgtp hint for exactly mimicking the function signature 
+// of ksets,  Accessed 15.11.25 (Version 5.1)
 py::tuple cluster_binding(py::array input,
                           int K,
                           int max_hist,
@@ -34,7 +34,7 @@ py::tuple cluster_binding(py::array input,
         for (ssize_t i = 0; i < n_rows; ++i) {
             rows[i].reserve(n_cols);
             for (ssize_t j = 0; j < n_cols; ++j) {
-                // Use Python-level indexing (safe for unicode / object arrays) <- ChatGtP Comment
+                // Use Python-level indexing (safe for unicode / object arrays) <- ChatGTP Comment
                 // Note: Very slow because it calls the python.__getitem__ method for each array item <- my comment
                 py::object item = input.attr("__getitem__")(py::make_tuple(i, j));
                 rows[i].push_back(item.cast<std::string>());
@@ -42,19 +42,31 @@ py::tuple cluster_binding(py::array input,
         }
     }
 
-    // ---- Convert histograms optionally ----
-    std::vector<std::vector<int>> hist_cpp;
-
-    if (!histograms.is_none()) {
-        hist_cpp = histograms.cast<std::vector<std::vector<int>>>();
-    }
 
     // ---- Call C++ algorithm ----
     //auto hash_policy = ksets::hashing::HashPolicy<ksets::hashing::MurmurHash>{12345}; // <- does not work because its explicit
     auto hash_policy = ksets::hashing::HashPolicy<ksets::hashing::MurmurHash>(ksets::hashing::MurmurHash(12345));
-    //auto alloc_policy = ksets::memory::PoolAllocator<std::pair<const std::string,int>>{};
+    //auto alloc_policy = ksets::memory::PoolAllocator<std::pair<const std::string,int>>{}; <- crashes because the PoolAllocator has little human brain power supportiing it
     ksets::histogram::MapHistogramCollection<decltype(hash_policy)> hist_collection(K, hash_policy);//, alloc_policy);
+    
+    if (!histograms.is_none()) {
+        py::list py_list = histograms.cast<py::list>();
+        if (py_list.size() != (size_t)K)
+            throw std::runtime_error("Histogram list length != K");
+
+        for (size_t c = 0; c < K; ++c) {
+            py::dict d = py_list[c].cast<py::dict>();
+            for (auto kv : d) {
+                std::string token = kv.first.cast<std::string>();
+                int count = kv.second.cast<int>();
+                hist_collection[c].set(token, count);
+            }
+        }
+    }
+    
+    
     ksets::ClusterResult r = ksets::cluster_cpp(rows, K, max_hist, hist_collection, max_iter);
+
 
     return py::make_tuple(r.labels, r.histograms, r.sumd);
 }

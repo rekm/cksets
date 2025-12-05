@@ -10,6 +10,10 @@ public:
         derived().increment(token);
     }
     
+    void zero_out(){
+        derived().zero_out();
+    }
+    
     auto total() const {
         return static_cast<const Derived*>(this)->total();
     }

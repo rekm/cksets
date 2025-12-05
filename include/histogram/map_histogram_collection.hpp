@@ -27,8 +27,23 @@ public:
         histograms_[cluster].decrement(token);
     }
 
+    bool empty() const {
+        bool res = false;
+        for (auto const& h : histograms_) {
+            res |= h.empty();
+            if (res) break;
+        }
+        return res;
+    }
+
     int get(size_t cluster, const std::string& token) const {
         return histograms_[cluster].get(token);
+    }
+
+    void zero_out() {
+        for (auto& h : histograms_) {
+            h.zero_out();
+        }
     }
 
     std::vector<int> totals() const {

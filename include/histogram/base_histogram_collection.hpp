@@ -13,6 +13,10 @@ public:
         derived().increment(token);
     }
 
+    void zero_out(){
+        derived().zero_out();
+    }
+
     // Get token count for a single histogram (default: first histogram)
     int get(const std::string& token) const {
         return derived().get(token);

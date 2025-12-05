@@ -32,6 +32,16 @@ public:
         freq[token]++;
     }
 
+    void zero_out(){
+        for (auto& kv : freq) {
+            kv.second = 0; 
+        }
+    }
+
+    bool empty() const {
+        return freq.empty();
+    }
+
     void decrement(const std::string& token) {
         auto it = freq.find(token);
         if (it == freq.end()) {
@@ -48,10 +58,15 @@ public:
         return it != freq.end() ? it->second : 0;
     }
 
+    void set(const std::string& token, int value) {
+        freq[token] = value;
+    }
+
     void debug_print() const {
         for (const auto& kv : freq) {
-            std::cout << kv.first << " -> " << kv.second << "\n";
+            std::cout << kv.first << " -> " << kv.second << ", ";
         }
+        std::cout << "\n";
     }
 
     int total() const {
