@@ -17,6 +17,10 @@ public:
         derived().zero_out();
     }
 
+    Derived clone_empty() const {
+        return derived().clone_empty_impl();
+    }
+
     // Get token count for a single histogram (default: first histogram)
     int get(const std::string& token) const {
         return derived().get(token);

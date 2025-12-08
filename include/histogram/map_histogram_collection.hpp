@@ -11,10 +11,14 @@ class MapHistogramCollection
     : public BaseHistogramCollection<MapHistogramCollection<HashPolicy, AllocatorPolicy>>
 {
     std::vector<MapHistogram<HashPolicy, AllocatorPolicy>> histograms_;
+    size_t K_;
+    HashPolicy hash_;
+    AllocatorPolicy alloc_;
+
 public:
     using MapHistType = ksets::histogram::MapHistogram<HashPolicy, AllocatorPolicy>;
     explicit MapHistogramCollection(size_t K, HashPolicy hash = {}, AllocatorPolicy alloc = {})
-        : histograms_(K, MapHistogram<HashPolicy, AllocatorPolicy>(hash, alloc)) {}
+        : histograms_(K, MapHistogram<HashPolicy, AllocatorPolicy>(hash, alloc)), K_(K), alloc_(alloc) {}
 
     MapHistType& operator[](size_t i) { return histograms_[i]; }
     const MapHistType& operator[](size_t i) const { return histograms_[i]; }
@@ -27,6 +31,10 @@ public:
         histograms_[cluster].decrement(token);
     }
 
+    MapHistogramCollection clone_empty_impl() const {
+        return MapHistogramCollection(K_, hash_, alloc_);
+    }
+
     bool empty() const {
         bool res = false;
         for (auto const& h : histograms_) {
@@ -34,6 +42,12 @@ public:
             if (res) break;
         }
         return res;
+    }
+
+    void clear(){
+        for (auto& h : histograms_) {
+            h.clear();
+        }
     }
 
     int get(size_t cluster, const std::string& token) const {

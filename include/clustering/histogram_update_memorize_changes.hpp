@@ -27,7 +27,7 @@ namespace ksets {
 
         void commit_impl(std::vector<int>& labels_cur) {
             // Apply all buffered changes
-            std::cout << std::format("Comitting for iteration {0:d}\n", Base::iteration_);
+            //std::cout << std::format("Comitting for iteration {0:d}\n", Base::iteration_);
             for (auto const& change : changes_){
                 size_t row_idx, old_cluster, new_cluster;
                 std::tie(row_idx, old_cluster, new_cluster) = change;

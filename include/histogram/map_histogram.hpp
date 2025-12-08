@@ -41,6 +41,10 @@ public:
     bool empty() const {
         return freq.empty();
     }
+    
+    void clear(){
+        freq.clear();
+    }
 
     void decrement(const std::string& token) {
         auto it = freq.find(token);

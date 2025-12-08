@@ -6,6 +6,7 @@
 #include <memory/pool_allocator.hpp>
 #include <histogram/map_histogram_collection.hpp>
 #include <clustering/histogram_update_memorize_changes.hpp>
+#include <clustering/histogram_update_ksets_authors.hpp>
 
 namespace py = pybind11;
 
@@ -16,7 +17,8 @@ py::tuple cluster_binding(py::array input,
                           int K,
                           int max_hist,
                           py::object histograms = py::none(),
-                          int max_iter = 50)
+                          int max_iter = 50,
+                          std::string hist_rebuild = "memorize")
 {
     // ---- Convert numpy to vector<vector<string>> ----
     // also reworked using chatgtp version 5 (Access 15.11.2025), I got seg faults because of 
@@ -65,10 +67,22 @@ py::tuple cluster_binding(py::array input,
     }
     
     
-    ksets::ClusterResult r = ksets::cluster_cpp<
-        decltype(hist_collection), 
-        ksets::HistUpdaterMemorizeChanges>(rows, K, max_hist, hist_collection, max_iter);
-
+    ksets::ClusterResult r;
+    if (hist_rebuild == "memorize") {
+        r = ksets::cluster_cpp<
+            decltype(hist_collection), 
+            ksets::HistUpdaterMemorizeChanges
+            //ksets::HistUpdaterKsetsAuthors
+            >(rows, K, max_hist, hist_collection, max_iter);
+    } else if (hist_rebuild == "full"){
+        r = ksets::cluster_cpp<
+            decltype(hist_collection), 
+            ksets::HistUpdaterKsetsAuthors
+            >(rows, K, max_hist, hist_collection, max_iter);
+    } else {
+        throw std::runtime_error("Unknown hist_rebuild option: " + hist_rebuild +
+                             ". Expected: 'memorize' or 'full'");
+    }
 
     return py::make_tuple(r.labels, r.histograms, r.sumd);
 }
@@ -82,5 +96,7 @@ PYBIND11_MODULE(_ksets_cpp, m)
           py::arg("number_of_clusters"),
           py::arg("max_hist_length"),
           py::arg("histograms") = py::none(),
-          py::arg("max_iter") = 50);
+          py::arg("max_iter") = 50,
+          py::arg("hist_rebuild") = "memorize"
+        );
 }

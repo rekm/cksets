@@ -15,11 +15,11 @@ namespace ksets {
                 : H_(h), data_(d) {}
 
             void before_iteration(size_t it_idx) {
-                //#ifdef DEBUG_BASE
+                #ifdef DEBUG_BASE
                     if (it_idx % 1 == 0){
                         std::cout << "\nin progress... " << it_idx << "\n";
                     }
-                //#endif
+                #endif
                 #ifdef DEBUG_DESPERATION
                     for (size_t idx=0; idx < H_.size(); ++idx)
                         H_[idx].debug_print();

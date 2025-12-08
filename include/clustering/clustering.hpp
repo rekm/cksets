@@ -175,7 +175,7 @@ ClusterResult cluster_cpp(
 
         //4.2 Stop if error increases
         if (sdth > sdth_old) {
-            std::cout << std::format("Error Increased: sdth={0:0.6f} > sdth_old={1:0.6f}\n", sdth, sdth_old);
+            //std::cout << std::format("Error Increased: sdth={0:0.6f} > sdth_old={1:0.6f}\n", sdth, sdth_old);
             sumd = sumd_prev;
             //reverse histogram changes
             histUpdater.rollback(labels_cur);
@@ -187,10 +187,10 @@ ClusterResult cluster_cpp(
         } 
         //4.3. Recompute histograms by applying histogram changes using data rows
         histUpdater.commit(labels_cur);
-        for (size_t i = 0; i < histograms.size(); i++){
+        /*for (size_t i = 0; i < histograms.size(); i++){
             std::cout << "Cluster Histogram:" << i << "\n";
             histograms[i].debug_print();
-        }
+        }*/
         
         
         
