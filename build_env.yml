@@ -12,6 +12,7 @@ dependencies:
   - plotly
   - cmake=3.26
   - scikit-build-core
+  - memory_profiler
   - pip
   - pip:
     - spdlog
