@@ -1,6 +1,7 @@
 
 #pragma once
 #include <histogram/base_histogram_collection.hpp>
+#include <clustering/histogram_update_policy.hpp>
 #include <hashing/hash_policy.hpp>
 #include <hashing/murmur_hash.hpp>
 #include <string> 
@@ -32,7 +33,7 @@ std::vector<std::vector<int>> to_hist_output_format(
     return out;
 }
 
-template <class HistogramCollection>
+template <class HistogramCollection, template<class> class HistogramUpdatePolicy>
 ClusterResult cluster_cpp(
         const std::vector<std::vector<std::string>> & data,
         int K,
@@ -40,6 +41,7 @@ ClusterResult cluster_cpp(
         HistogramCollection& histograms,
         int max_iter = 50){
     
+    HistogramUpdatePolicy<HistogramCollection> histUpdater(histograms, data);
     if (max_iter == 0)
         max_iter = 50;
 
@@ -71,23 +73,14 @@ ClusterResult cluster_cpp(
     // monitoring the cluster sizes 
     std::vector<int> cluster_sizes(K, 0);
     int j = 0;
-    // Tracking changes for histogram/cluster reassignment
-    std::vector<std::tuple<size_t, size_t, size_t>> histogram_changes;
-    std::vector<std::tuple<size_t, size_t, size_t>> prev_histogram_changes;
+    
     // Storing most distant data to clusters
     std::vector<std::pair<size_t, double>> clusters_empty;
     std::vector<std::pair<double, size_t>> most_distant(K, {0.0, 0}); 
     //Main Loop
     while (std::abs(sdth_old - sdth) > 0.00001 && j < max_iter){
-        #ifdef DEBUG_BASE
-            if (j % 1 == 0){
-                std::cout << "\nin progress... " << j << "\n";
-            }
-        #endif
-        #ifdef DEBUG_DESPERATION
-            for (size_t idx=0; idx < histograms.size(); ++idx)
-                histograms[idx].debug_print();
-        #endif
+        
+        histUpdater.before_iteration(j);
         sdth_old = sdth;
         labels_prev = labels_cur;
         sumd_prev = sumd;
@@ -156,7 +149,7 @@ ClusterResult cluster_cpp(
                 cluster_sizes[best_cluster]++;
                 if (cluster_sizes[curr_cluster] == 0)
                     clusters_empty.emplace_back(curr_cluster, jaccard_distances[curr_cluster]);
-                histogram_changes.emplace_back(i,curr_cluster, best_cluster);
+                histUpdater.register_move(i,curr_cluster, best_cluster);
                 selection = best_cluster;
             }
             labels_cur[i] = selection;
@@ -178,83 +171,29 @@ ClusterResult cluster_cpp(
             std::cout << "\n";
             std::cout << std::format("SDTH = {0:0.6f}\n",sdth);
         #endif
-        //for (auto v : most_distant)
-        //    std::cout << std::dec << v.first << " , " << v.second << '\n';
-
-        /*
-        for (auto const& empty_cluster : clusters_empty) {
-            // choose donor cluster: global max of most_distant
-            std::cout << "Cluster: " << empty_cluster.first << " is empty!\n";
-            std::cout << "Dist: " << empty_cluster.second << " \n"; 
-            auto it = std::max_element(
-                most_distant.begin(), most_distant.end(),
-                [](auto const &a, auto const &b) { return a.first < b.first; }
-            );
-            size_t donor_row = it->second;
-            size_t donor_cluster = labels_cur[donor_row];
-            //int donor_cluster = std::distance(most_distant.begin(), it);
-            //size_t donor_row  = it->second;
-
-            // move this row
-            //labels_cur[donor_row] = empty_cluster.first;
-
-            // update histogram changes
-            histogram_changes.emplace_back(donor_row, donor_cluster, empty_cluster.first);
-
-            // update sizes
-            cluster_sizes[donor_cluster]--;
-            cluster_sizes[empty_cluster.first]++;
-
-            sumd[donor_cluster] -= empty_cluster.second;
-
-            // distance contributed by this row should no longer be considered
-            it->first = 0.0;      // cannot be used again
-            it->second = 0;       // dummy index
-        }
-        */
+        
 
         //4.2 Stop if error increases
         if (sdth > sdth_old) {
             std::cout << std::format("Error Increased: sdth={0:0.6f} > sdth_old={1:0.6f}\n", sdth, sdth_old);
             sumd = sumd_prev;
             //reverse histogram changes
-            for (auto it = prev_histogram_changes.rbegin(); it != prev_histogram_changes.rend(); ++it){
-                size_t row_idx, old_cluster, new_cluster;
-                std::tie(row_idx, old_cluster, new_cluster) = *it;
-                labels_cur[row_idx] = old_cluster;
-                for (auto const& token : data[row_idx]) {
-                    histograms.decrement(new_cluster, token);
-                    if ( j!= 0)
-                        histograms.increment(old_cluster, token);
-                }
-            } 
-            //histograms = hist_prev;
+            histUpdater.rollback(labels_cur);
+            //histograms = hist_prev; is ksets equivalent
             break;
         }
         if (j==0){
             histograms.zero_out();
         } 
         //4.3. Recompute histograms by applying histogram changes using data rows
-        for (auto const& change : histogram_changes){
-            size_t row_idx, old_cluster, new_cluster;
-            std::tie(row_idx, old_cluster, new_cluster) = change;
-            //labels_cur[row_idx] = new_cluster;
-            #ifdef DEBUG_DESPERATION
-                std::cout << std::format("D_change[{0:d}] = {1:d} -> {2:d}\n", row_idx, old_cluster, new_cluster);
-            #endif
-            for (auto const& token : data[row_idx]) {
-                if (j != 0)
-                    histograms.decrement(old_cluster, token);
-                histograms.increment(new_cluster, token);
-            }
-        }
-        /*for (size_t i = 0; i < histograms.size(); i++){
+        histUpdater.commit(labels_cur);
+        for (size_t i = 0; i < histograms.size(); i++){
             std::cout << "Cluster Histogram:" << i << "\n";
             histograms[i].debug_print();
         }
-        */
-        prev_histogram_changes.swap(histogram_changes);
-        histogram_changes.clear();
+        
+        
+        
         hist_sums = histograms.totals();
         //4.4 increment counter
         #ifdef DEBUG_BASE

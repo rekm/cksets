@@ -5,6 +5,7 @@
 #include <clustering/clustering.hpp>
 #include <memory/pool_allocator.hpp>
 #include <histogram/map_histogram_collection.hpp>
+#include <clustering/histogram_update_memorize_changes.hpp>
 
 namespace py = pybind11;
 
@@ -48,7 +49,6 @@ py::tuple cluster_binding(py::array input,
     auto hash_policy = ksets::hashing::HashPolicy<ksets::hashing::MurmurHash>(ksets::hashing::MurmurHash(12345));
     //auto alloc_policy = ksets::memory::PoolAllocator<std::pair<const std::string,int>>{}; <- crashes because the PoolAllocator has little human brain power supportiing it
     ksets::histogram::MapHistogramCollection<decltype(hash_policy)> hist_collection(K, hash_policy);//, alloc_policy);
-    
     if (!histograms.is_none()) {
         py::list py_list = histograms.cast<py::list>();
         if (py_list.size() != (size_t)K)
@@ -65,7 +65,9 @@ py::tuple cluster_binding(py::array input,
     }
     
     
-    ksets::ClusterResult r = ksets::cluster_cpp(rows, K, max_hist, hist_collection, max_iter);
+    ksets::ClusterResult r = ksets::cluster_cpp<
+        decltype(hist_collection), 
+        ksets::HistUpdaterMemorizeChanges>(rows, K, max_hist, hist_collection, max_iter);
 
 
     return py::make_tuple(r.labels, r.histograms, r.sumd);
