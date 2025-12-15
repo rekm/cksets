@@ -1,5 +1,5 @@
 #pragma once
-#include <histogram/base_histogram.hpp>
+#include <histogram/base.hpp>
 #include <memory/allocator_policy.hpp>
 #include <iostream>
 

@@ -2,11 +2,13 @@
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 
+#include <hashing/murmur_hash.hpp>
 #include <clustering/clustering.hpp>
 #include <memory/pool_allocator.hpp>
-#include <histogram/map_histogram_collection.hpp>
+#include <histogram/collection_map.hpp>
 #include <clustering/histogram_update_memorize_changes.hpp>
 #include <clustering/histogram_update_ksets_authors.hpp>
+#include <clustering/histogram_preselect_nothing.hpp>
 
 namespace py = pybind11;
 
@@ -47,6 +49,7 @@ py::tuple cluster_binding(py::array input,
 
 
     // ---- Call C++ algorithm ----
+
     //auto hash_policy = ksets::hashing::HashPolicy<ksets::hashing::MurmurHash>{12345}; // <- does not work because its explicit
     auto hash_policy = ksets::hashing::HashPolicy<ksets::hashing::MurmurHash>(ksets::hashing::MurmurHash(12345));
     //auto alloc_policy = ksets::memory::PoolAllocator<std::pair<const std::string,int>>{}; <- crashes because the PoolAllocator has little human brain power supportiing it
@@ -66,18 +69,18 @@ py::tuple cluster_binding(py::array input,
         }
     }
     
-    
     ksets::ClusterResult r;
     if (hist_rebuild == "memorize") {
         r = ksets::cluster_cpp<
             decltype(hist_collection), 
-            ksets::HistUpdaterMemorizeChanges
-            //ksets::HistUpdaterKsetsAuthors
+            ksets::HistUpdaterMemorizeChanges,
+            ksets::HistPreselectNothing
             >(rows, K, max_hist, hist_collection, max_iter);
     } else if (hist_rebuild == "full"){
         r = ksets::cluster_cpp<
             decltype(hist_collection), 
-            ksets::HistUpdaterKsetsAuthors
+            ksets::HistUpdaterKsetsAuthors,
+            ksets::HistPreselectNothing
             >(rows, K, max_hist, hist_collection, max_iter);
     } else {
         throw std::runtime_error("Unknown hist_rebuild option: " + hist_rebuild +
