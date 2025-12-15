@@ -1,9 +1,8 @@
 
 #pragma once
-#include <histogram/base_histogram_collection.hpp>
+#include <histogram/collection_base.hpp>
 #include <clustering/histogram_update_policy.hpp>
-#include <hashing/hash_policy.hpp>
-#include <hashing/murmur_hash.hpp>
+#include <clustering/histogram_preselect_policy.hpp>
 #include <string> 
 #include <format>
 #include <tuple>
@@ -33,7 +32,9 @@ std::vector<std::vector<int>> to_hist_output_format(
     return out;
 }
 
-template <class HistogramCollection, template<class> class HistogramUpdatePolicy>
+template <class HistogramCollection, 
+          template<class> class HistogramUpdatePolicy,
+          template<class> class HistogramPreselectPolicy>
 ClusterResult cluster_cpp(
         const std::vector<std::vector<std::string>> & data,
         int K,
@@ -41,6 +42,7 @@ ClusterResult cluster_cpp(
         HistogramCollection& histograms,
         int max_iter = 50){
     
+    HistogramPreselectPolicy<HistogramCollection> histPreselector(histograms, data);
     HistogramUpdatePolicy<HistogramCollection> histUpdater(histograms, data);
     if (max_iter == 0)
         max_iter = 50;
@@ -98,8 +100,9 @@ ClusterResult cluster_cpp(
             size_t best_cluster; 
             size_t curr_cluster = labels_cur[i];
             cluster_sizes[curr_cluster]++ ; // incrementing the cluster counter
+            auto histRange = histPreselector.get_candidate_histograms(data[i]);
             for (auto const& token : data[i]) {
-                    test_val = histograms.get_all(token);
+                    test_val = histograms.get_all(token, histRange);
                     std::transform(test_val.begin(), test_val.end(),
                         miss_val.begin(),
                         miss_val.begin(),

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <cstdint>
+#include <hashing/hash_policy.hpp>
 #include "hashing/MurmurHash3.h"
 
 namespace ksets {

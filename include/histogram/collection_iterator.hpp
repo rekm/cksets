@@ -1,0 +1,49 @@
+#pragma once
+
+namespace ksets::histogram {
+    
+    template <class HistogramCollection>
+    class CollectionIterator {
+    public:
+        using index_list_t = std::vector<size_t>;
+        // ChatGTP deconvoluted the access to the underlying histogram type
+        using histogram_ref = decltype(std::declval<HistogramCollection*>()[0]);
+        using histogram_type = std::remove_reference_t<histogram_ref>;
+        using value_type = std::pair<size_t, histogram_type&>;
+
+        CollectionIterator(HistogramCollection* H,
+                                const index_list_t* indices,
+                                size_t pos)
+            : H_(H), indices_(indices), pos_(pos) {}
+
+        size_t operator*() const { 
+            size_t idx = (*indices_)[pos_];
+            return idx; 
+        }
+
+        CollectionIterator& operator++() {
+            ++pos_;
+            return *this;
+        }
+
+        bool operator!=(const CollectionIterator& other) const {
+            return pos_ != other.pos_;
+        }
+
+    private:
+        HistogramCollection* H_;
+        const index_list_t* indices_;
+        size_t pos_;
+    };
+
+    template <class HistogramCollection>
+    struct CollectionRange {
+        using iterator = CollectionIterator<HistogramCollection>;
+        iterator begin_;
+        iterator end_;
+
+        iterator begin() const { return begin_; }
+        iterator end()   const { return end_; }
+    };
+
+}

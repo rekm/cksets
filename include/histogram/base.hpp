@@ -1,5 +1,6 @@
 #pragma once
 
+
 namespace ksets {
 namespace histogram {
 
@@ -22,6 +23,7 @@ public:
         return derived().get(token);
     }
 
+
 protected:
     Derived& derived() { 
         return static_cast<Derived&>(*this); 
@@ -32,4 +34,4 @@ protected:
 };
 
 } // namespace histogram
-} // namespace mylib
+} // namespace ksets
