@@ -1,6 +1,7 @@
 #pragma once
-#include <histogram/base.hpp>
-#include <histogram/collection_iterator.hpp>
+#include <ksets/types.hpp>
+#include <ksets/histogram/base.hpp>
+#include <ksets/histogram/collection_iterator.hpp>
 
 namespace ksets::histogram {
 
@@ -12,7 +13,7 @@ namespace ksets::histogram {
 
     public:
         // Increment token in the collection
-        void add_token(const std::string& token) {
+        void add_token(const token_t& token) {
             derived().increment(token);
         }
 
@@ -25,7 +26,7 @@ namespace ksets::histogram {
         }
 
         // Get token count for a single histogram (default: first histogram)
-        int get(const std::string& token) const {
+        int get(const token_t& token) const {
             return derived().get(token);
         }
 
@@ -38,7 +39,7 @@ namespace ksets::histogram {
         }
 
         // Query all histograms in the collection at once
-        std::vector<int> get_all(const std::string& token) const {
+        std::vector<int> get_all(const token_t& token) const {
             if constexpr (requires(const Derived d) { d.query_all(token); }) {
                 return derived().query_all(token);
             } else {

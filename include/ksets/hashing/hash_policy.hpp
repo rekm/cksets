@@ -1,4 +1,5 @@
-
+#pragma once
+#include <ksets/types.hpp>
 namespace ksets {
 namespace hashing {
 
@@ -12,7 +13,15 @@ struct HashPolicy {
         return hash_func(key);  // forward to underlying hash
     }
 
+    std::size_t operator()(const token_t& key) const noexcept {
+        return hash_func(key);  // forward to underlying hash
+    }
+
     std::size_t hash(std::string const& key) const noexcept {
+        return hash_func(key);
+    }
+
+    std::size_t hash(token_t const& key) const noexcept {
         return hash_func(key);
     }
 };

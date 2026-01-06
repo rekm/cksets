@@ -8,6 +8,8 @@ pybind11_add_module(_ksets_cpp bindings.cpp)
 target_link_libraries(_ksets_cpp
     PRIVATE
         ksets::ksets            # or ksets::ksets
+        seqan3::seqan3
+        seqan::hibf
 )
 
 # Make sure headers work

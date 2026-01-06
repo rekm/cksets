@@ -1,6 +1,7 @@
 #pragma once
-#include <clustering/histogram_preselect_policy.hpp>
-#include <histogram/collection_iterator.hpp>
+#include <ksets/clustering/histogram_preselect_policy.hpp>
+#include <ksets/histogram/collection_iterator.hpp>
+#include <ksets/types.hpp>
 #include <numeric>
 
 namespace ksets {
@@ -16,7 +17,7 @@ namespace ksets {
         using Base::Base;
         
         explicit HistPreselectNothing(HistogramCollection& hist,
-                            const std::vector<std::vector<std::string>>& data)
+                            const std::vector<std::vector<token_t>>& data)
             : Base(hist, data),  
             hists_(hist), data_(data), indices_(hist.size())
         {
@@ -24,7 +25,7 @@ namespace ksets {
         }
         void before_iteration_impl(size_t it_idx) {}
 
-        Range get_candidate_histograms_impl(const std::vector<std::string>& data_row) {
+        Range get_candidate_histograms_impl(const std::vector<token_t>& data_row) {
             return hists_.get_range(indices_);
         }
 
@@ -37,7 +38,7 @@ namespace ksets {
     private:
         HistogramCollection& hists_;
         std::vector<size_t> indices_;
-        const std::vector<std::vector<std::string>>& data_;
+        const std::vector<std::vector<token_t>>& data_;
     };
 
 } // namespace ksets

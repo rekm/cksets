@@ -1,4 +1,5 @@
 #pragma once
+#include <ksets/types.hpp>
 #include <iostream>
 
 namespace ksets {
@@ -7,11 +8,11 @@ namespace ksets {
     class HistogramUpdatePolicy {
         protected:
             HistogramCollection& H_;
-            const std::vector<std::vector<std::string>>& data_;
+            const std::vector<std::vector<token_t>>& data_;
             int iteration_ = 0;   
         public:
             HistogramUpdatePolicy(HistogramCollection& h,
-                                const std::vector<std::vector<std::string>>& d)
+                                const std::vector<std::vector<token_t>>& d)
                 : H_(h), data_(d) {}
 
             void before_iteration(size_t it_idx) {

@@ -1,6 +1,7 @@
 #pragma once
-#include <histogram/base.hpp>
-#include <memory/allocator_policy.hpp>
+#include <ksets/types.hpp>
+#include <ksets/histogram/base.hpp>
+#include <ksets/memory/allocator_policy.hpp>
 #include <iostream>
 
 namespace ksets {
@@ -8,16 +9,16 @@ namespace histogram {
 
 template <
     class HashPolicy,
-    class AllocatorPolicy = std::allocator<std::pair<const std::string,int>>
+    class AllocatorPolicy = std::allocator<std::pair<const token_t,int>>
 >
 class MapHistogram : 
     public HistogramBase<MapHistogram<HashPolicy, AllocatorPolicy >>
 {
     using MapType = std::unordered_map<
-        std::string,
+        token_t,
         int,
         HashPolicy,
-        std::equal_to<std::string>,
+        std::equal_to<token_t>,
         AllocatorPolicy
     >;
 
@@ -25,10 +26,10 @@ class MapHistogram :
 
 public:
     MapHistogram(HashPolicy hash, AllocatorPolicy alloc = {})
-        : freq(0, hash, std::equal_to<std::string>(), alloc)
+        : freq(0, hash, std::equal_to<token_t>(), alloc)
     {}
 
-    void increment(const std::string& token) {
+    void increment(const token_t& token) {
         freq[token]++;
     }
 
@@ -46,7 +47,7 @@ public:
         freq.clear();
     }
 
-    void decrement(const std::string& token) {
+    void decrement(const token_t& token) {
         auto it = freq.find(token);
         if (it == freq.end()) {
             return; // nothing to undo
@@ -57,12 +58,12 @@ public:
         }
     }
 
-    int get(const std::string& token) const {
+    int get(const token_t& token) const {
         auto it = freq.find(token);
         return it != freq.end() ? it->second : 0;
     }
 
-    void set(const std::string& token, int value) {
+    void set(const token_t& token, int value) {
         freq[token] = value;
     }
 
@@ -88,6 +89,18 @@ public:
         int count = 0;
         for (auto const &kv : freq) {
             out.push_back(kv.second);
+            if (++count == max_hist_length) break;
+        }
+        return out;
+    }
+
+    std::vector<token_t> keys(int max_hist_length = std::numeric_limits<int>::max()) const {
+        std::vector<token_t> out;
+        out.reserve(std::min<size_t>(freq.size(), max_hist_length));
+
+        int count = 0;
+        for (auto const &kv : freq) {
+            out.push_back(kv.first);
             if (++count == max_hist_length) break;
         }
         return out;

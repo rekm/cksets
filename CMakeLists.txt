@@ -26,10 +26,10 @@ set(CPM_DOWNLOAD_LOCATION "${CMAKE_SOURCE_DIR}/external/CPM.cmake")
 include(${CMAKE_SOURCE_DIR}/cmake/configuration.cmake)
 
 add_library(ksets
-    src/clustering.cpp
-    src/clustering/ksets.cpp
-    src/indexing/ibf_processor.cpp
-    src/hashing/MurmurHash3.cpp
+    src/ksets/clustering.cpp
+    src/ksets/clustering/ksets.cpp
+    src/ksets/indexing/ibf_processor.cpp
+    src/ksets/hashing/MurmurHash3.cpp
 )
 
 target_include_directories(ksets

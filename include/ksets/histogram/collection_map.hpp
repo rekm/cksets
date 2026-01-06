@@ -1,12 +1,13 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <ksets/types.hpp>
 #include "map.hpp"
 #include "collection_base.hpp"
 
 namespace ksets::histogram {
 
-template <typename HashPolicy, typename AllocatorPolicy = std::allocator<std::pair<const std::string,int>>>
+template <typename HashPolicy, typename AllocatorPolicy = std::allocator<std::pair<const token_t,int>>>
 class MapHistogramCollection
     : public BaseHistogramCollection<MapHistogramCollection<HashPolicy, AllocatorPolicy>>
 {
@@ -23,11 +24,11 @@ public:
     MapHistType& operator[](size_t i) { return histograms_[i]; }
     const MapHistType& operator[](size_t i) const { return histograms_[i]; }
 
-    void increment(size_t cluster, const std::string& token) {
+    void increment(size_t cluster, const token_t& token) {
         histograms_[cluster].increment(token);
     }
 
-    void decrement(size_t cluster, const std::string& token) {
+    void decrement(size_t cluster, const token_t& token) {
         histograms_[cluster].decrement(token);
     }
 
@@ -50,7 +51,7 @@ public:
         }
     }
 
-    int get(size_t cluster, const std::string& token) const {
+    int get(size_t cluster, const token_t& token) const {
         return histograms_[cluster].get(token);
     }
 
@@ -69,14 +70,14 @@ public:
         return sums;
     }
 
-    std::vector<int> get_all(const std::string& token) const {
+    std::vector<int> get_all(const token_t& token) const {
         std::vector<int> counts;
         counts.reserve(histograms_.size());
         for (auto const& h : histograms_) counts.push_back(h.get(token));
         return counts;
     }
 
-    std::vector<int> get_all(const std::string& token, CollectionRange<MapHistogramCollection>& range) const {
+    std::vector<int> get_all(const token_t& token, CollectionRange<MapHistogramCollection>& range) const {
         std::vector<int> counts(histograms_.size(), 0);
         for (const auto cluster_idx : range) 
             counts[cluster_idx] = get(cluster_idx, token);

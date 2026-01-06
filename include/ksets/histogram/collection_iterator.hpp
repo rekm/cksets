@@ -1,4 +1,5 @@
 #pragma once
+#include <ksets/types.hpp>
 
 namespace ksets::histogram {
     
@@ -9,6 +10,7 @@ namespace ksets::histogram {
         // ChatGTP deconvoluted the access to the underlying histogram type
         using histogram_ref = decltype(std::declval<HistogramCollection*>()[0]);
         using histogram_type = std::remove_reference_t<histogram_ref>;
+        // but not used in the end 
         using value_type = std::pair<size_t, histogram_type&>;
 
         CollectionIterator(HistogramCollection* H,

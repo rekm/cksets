@@ -1,8 +1,9 @@
 
 #pragma once
-#include <histogram/collection_base.hpp>
-#include <clustering/histogram_update_policy.hpp>
-#include <clustering/histogram_preselect_policy.hpp>
+#include <ksets/histogram/collection_base.hpp>
+#include <ksets/clustering/histogram_update_policy.hpp>
+#include <ksets/clustering/histogram_preselect_policy.hpp>
+#include <ksets/types.hpp>
 #include <string> 
 #include <format>
 #include <tuple>
@@ -36,7 +37,7 @@ template <class HistogramCollection,
           template<class> class HistogramUpdatePolicy,
           template<class> class HistogramPreselectPolicy>
 ClusterResult cluster_cpp(
-        const std::vector<std::vector<std::string>> & data,
+        const std::vector<std::vector<token_t>> & data,
         int K,
         int max_hist_length,
         HistogramCollection& histograms,
@@ -86,7 +87,7 @@ ClusterResult cluster_cpp(
         sdth_old = sdth;
         labels_prev = labels_cur;
         sumd_prev = sumd;
-        // tuple of histogram changes  [(data_idx, old_cluster, new_cluster), ...]
+        
         clusters_empty.clear();
         std::fill(miss_val.begin(), miss_val.end(), 0);
         std::fill(test_sum_val.begin(), test_sum_val.end(), 0);

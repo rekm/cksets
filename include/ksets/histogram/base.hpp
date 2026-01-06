@@ -1,5 +1,5 @@
 #pragma once
-
+#include <ksets/types.hpp>
 
 namespace ksets {
 namespace histogram {
@@ -7,7 +7,7 @@ namespace histogram {
 template <class Derived>
 class HistogramBase {
 public:
-    void add_token(std::string const& token) {
+    void add_token(token_t const& token) {
         derived().increment(token);
     }
     
@@ -19,7 +19,7 @@ public:
         return static_cast<const Derived*>(this)->total();
     }
 
-    int operator[](std::string const& token) const {
+    int operator[](token_t const& token) const {
         return derived().get(token);
     }
 

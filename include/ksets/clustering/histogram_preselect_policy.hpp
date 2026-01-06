@@ -1,5 +1,6 @@
 #pragma once
-#include <histogram/collection_iterator.hpp>
+#include <ksets/histogram/collection_iterator.hpp>
+#include <ksets/types.hpp>
 #include <iostream>
 
 namespace ksets {
@@ -8,11 +9,11 @@ namespace ksets {
     class HistogramPreselectPolicy {
         protected:
             HistogramCollection& H_;
-            const std::vector<std::vector<std::string>>& data_;
+            const std::vector<std::vector<token_t>>& data_;
             int iteration_ = 0;   
         public:
             HistogramPreselectPolicy(HistogramCollection& h,
-                                const std::vector<std::vector<std::string>>& d)
+                                const std::vector<std::vector<token_t>>& d)
                 : H_(h), data_(d) {}
 
             void before_iteration(size_t it_idx) {
@@ -20,7 +21,7 @@ namespace ksets {
                 derived().before_iteration_impl(it_idx);
             }
 
-            auto get_candidate_histograms(const std::vector<std::string>& data_row) {
+            auto get_candidate_histograms(const std::vector<token_t>& data_row) {
                 return derived().get_candidate_histograms_impl(data_row);
             }
 

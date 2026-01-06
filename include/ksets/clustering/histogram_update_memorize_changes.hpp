@@ -1,5 +1,6 @@
 #pragma once
-#include <clustering/histogram_update_policy.hpp>
+#include <ksets/clustering/histogram_update_policy.hpp>
+#include <ksets/types.hpp>
 
 namespace ksets {
 
@@ -13,7 +14,7 @@ namespace ksets {
         using Base::Base;
         using Base::iteration_;
         explicit HistUpdaterMemorizeChanges(HistogramCollection& hist,
-                            const std::vector<std::vector<std::string>>& data)
+                            const std::vector<std::vector<token_t>>& data)
             : Base(hist, data),  
             hists_(hist), data_(data)
         {}
@@ -62,7 +63,7 @@ namespace ksets {
 
     private:
         HistogramCollection& hists_;
-        const std::vector<std::vector<std::string>>& data_;
+        const std::vector<std::vector<token_t>>& data_;
         // Tracking changes for histogram/cluster reassignment
         std::vector<std::tuple<size_t, size_t, size_t>> changes_;
         std::vector<std::tuple<size_t, size_t, size_t>> prev_changes_;

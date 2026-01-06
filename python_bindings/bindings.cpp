@@ -2,13 +2,15 @@
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 
-#include <hashing/murmur_hash.hpp>
-#include <clustering/clustering.hpp>
-#include <memory/pool_allocator.hpp>
-#include <histogram/collection_map.hpp>
-#include <clustering/histogram_update_memorize_changes.hpp>
-#include <clustering/histogram_update_ksets_authors.hpp>
-#include <clustering/histogram_preselect_nothing.hpp>
+#include <ksets/hashing/murmur_hash.hpp>
+#include <ksets/clustering/clustering.hpp>
+#include <ksets/memory/pool_allocator.hpp>
+#include <ksets/histogram/collection_map.hpp>
+#include <ksets/clustering/histogram_update_memorize_changes.hpp>
+#include <ksets/clustering/histogram_update_ksets_authors.hpp>
+#include <ksets/clustering/histogram_preselect_nothing.hpp>
+#include <ksets/clustering/histogram_preselect_ibf.hpp>
+#include <ksets/types.hpp>
 
 namespace py = pybind11;
 
@@ -74,13 +76,13 @@ py::tuple cluster_binding(py::array input,
         r = ksets::cluster_cpp<
             decltype(hist_collection), 
             ksets::HistUpdaterMemorizeChanges,
-            ksets::HistPreselectNothing
+            ksets::HistPreselectIBF
             >(rows, K, max_hist, hist_collection, max_iter);
     } else if (hist_rebuild == "full"){
         r = ksets::cluster_cpp<
             decltype(hist_collection), 
             ksets::HistUpdaterKsetsAuthors,
-            ksets::HistPreselectNothing
+            ksets::HistPreselectIBF
             >(rows, K, max_hist, hist_collection, max_iter);
     } else {
         throw std::runtime_error("Unknown hist_rebuild option: " + hist_rebuild +
