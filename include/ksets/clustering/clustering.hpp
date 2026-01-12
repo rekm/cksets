@@ -84,6 +84,7 @@ ClusterResult cluster_cpp(
     while (std::abs(sdth_old - sdth) > 0.00001 && j < max_iter){
         
         histUpdater.before_iteration(j);
+        histPreselector.before_iteration(j);
         sdth_old = sdth;
         labels_prev = labels_cur;
         sumd_prev = sumd;
@@ -191,6 +192,7 @@ ClusterResult cluster_cpp(
         } 
         //4.3. Recompute histograms by applying histogram changes using data rows
         histUpdater.commit(labels_cur);
+        histPreselector.update(labels_cur);
         /*for (size_t i = 0; i < histograms.size(); i++){
             std::cout << "Cluster Histogram:" << i << "\n";
             histograms[i].debug_print();
