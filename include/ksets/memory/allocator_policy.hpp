@@ -1,7 +1,7 @@
 #pragma once 
 
 
-namespace mylib::memory {
+namespace ksets::memory {
 
 template <typename Derived>
 struct AllocatorPolicy {
@@ -16,4 +16,4 @@ struct AllocatorPolicy {
     }
 };
 
-} // namespace mylib::memory
+} // namespace ksets::memory
