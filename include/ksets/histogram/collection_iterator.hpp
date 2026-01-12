@@ -40,12 +40,14 @@ namespace ksets::histogram {
 
     template <class HistogramCollection>
     struct CollectionRange {
+        using index_list_t = std::vector<size_t>;
         using iterator = CollectionIterator<HistogramCollection>;
-        iterator begin_;
-        iterator end_;
+        
+        HistogramCollection* H_;
+        index_list_t indices;
 
-        iterator begin() const { return begin_; }
-        iterator end()   const { return end_; }
+        iterator begin() const { return iterator{H_, &indices, 0}; }
+        iterator end()   const { return iterator{H_, &indices, indices.size()}; }
     };
 
 }

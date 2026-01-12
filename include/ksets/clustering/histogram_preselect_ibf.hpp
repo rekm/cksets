@@ -1,15 +1,18 @@
 #pragma once
 #include <ksets/clustering/histogram_preselect_policy.hpp>
 #include <ksets/histogram/collection_iterator.hpp>
-#include <ksets/types.hpp>
+#include <ksets/types.hpp> // for token_t
 #include <hibf/interleaved_bloom_filter.hpp> // for bin_index, interleaved_bloom_filter, bin_count, bin_size, hash_...
 #include <hibf/misc/print.hpp>               // for print, print_t
 #include <hibf/misc/bit_vector.hpp>
+#include <ranges>
 #include <numeric>
 #include <vector>
 
 
 namespace ksets {
+
+    
 
     template <typename HistogramCollection>
     class HistPreselectIBF
@@ -30,6 +33,9 @@ namespace ksets {
                  seqan::hibf::hash_function_count{3u})
         {
             std::iota(indices_.begin(), indices_.end(), 0);
+            all_bins_.reserve(ibf_.bin_count());
+            for (size_t i = 0; i < ibf_.bin_count(); ++i)
+                all_bins_.push_back(seqan::hibf::bin_index{i});
             cluster_agent_ = ibf_.containment_agent();
         }
         void before_iteration_impl(size_t it_idx) {
@@ -42,26 +48,35 @@ namespace ksets {
         }
 
         Range get_candidate_histograms_impl(const std::vector<token_t>& data_row) {
-            seqan::hibf::bit_vector bit_results(0, hists_.size());
+            seqan::hibf::bit_vector bit_results(hists_.size(), false);
             std::vector<size_t> results;
             results.reserve(hists_.size());
             for (const auto& token: data_row){
-                auto & res = cluster_agent_.bulk_contains(token);
+                auto const& res = cluster_agent_.bulk_contains(token);
                 bit_results |= res; 
             }
-            seqan::hibf::print(bit_results);
-            // create index from bitvector? 
-            bit_vector_indices(bit_results, std::back_inserter(results));
-            return hists_.get_range(results);
+            if (bit_results.none()){
+                results.push_back(hists_.size()-1);
+            } else {
+                //seqan::hibf::print(bit_results);
+                // create index from bitvector
+                bit_vector_indices(bit_results, std::back_inserter(results));
+            }
+            
+            return hists_.get_range(std::move(results));
         }
 
 
         void update_impl(std::vector<int>& labels_cur) {
+            ibf_.clear(all_bins_);
+            before_iteration_impl(0);
+            cluster_agent_ = ibf_.containment_agent();
         }
 
 
 
     private:
+        std::vector<seqan::hibf::bin_index> all_bins_;
         seqan::hibf::interleaved_bloom_filter ibf_;
         seqan::hibf::interleaved_bloom_filter::containment_agent_type cluster_agent_;
         HistogramCollection& hists_;
@@ -70,32 +85,11 @@ namespace ksets {
 
         template <typename BitVector, typename OutputIt>
         void bit_vector_indices(BitVector const & bv, OutputIt out){
-            using chunk_type = std::remove_cv_t<std::remove_pointer_t<decltype(bv.data())>>;
-            constexpr size_t chunk_bits = sizeof(chunk_type) * CHAR_BIT;
-
             size_t const nbits = bv.size();
-            size_t const nchunks = (nbits + chunk_bits - 1) / chunk_bits;
-
-            chunk_type const * chunks = bv.data();
-
-            for (size_t c = 0; c < nchunks; ++c)
+            for (size_t i = 0; i < nbits; ++i)
             {
-                chunk_type x = chunks[c];
-
-                // Mask unused bits in last chunk
-                if (c + 1 == nchunks)
-                {
-                    size_t const valid = nbits - c * chunk_bits;
-                    if (valid < chunk_bits)
-                        x &= (chunk_type{1} << valid) - 1;
-                }
-
-                while (x)
-                {
-                    unsigned bit = std::countr_zero(x); 
-                    *out++ = c * chunk_bits + bit;
-                    x &= x - 1;
-                }
+                if (bv[i])
+                    *out++ = i;
             }
         }
     };

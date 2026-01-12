@@ -30,11 +30,11 @@ namespace ksets::histogram {
             return derived().get(token);
         }
 
-        auto get_range(const std::vector<size_t>& indices) {
+        auto get_range(const std::vector<size_t>&& indices) {
             Derived* self = static_cast<Derived*>(this);
             return CollectionRange<Derived>{
-                CollectionIterator<Derived>(self, &indices, 0),
-                CollectionIterator<Derived>(self, &indices, indices.size())
+                self,
+                std::move(indices)
             };
         }
 

@@ -26,7 +26,7 @@ namespace ksets {
         void before_iteration_impl(size_t it_idx) {}
 
         Range get_candidate_histograms_impl(const std::vector<token_t>& data_row) {
-            return hists_.get_range(indices_);
+            return hists_.get_range(std::move(indices_));
         }
 
 

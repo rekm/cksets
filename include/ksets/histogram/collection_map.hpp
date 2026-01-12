@@ -2,8 +2,8 @@
 #include <vector>
 #include <string>
 #include <ksets/types.hpp>
-#include "map.hpp"
-#include "collection_base.hpp"
+#include <ksets/histogram/map.hpp>
+#include <ksets/histogram/collection_base.hpp>
 
 namespace ksets::histogram {
 
@@ -77,7 +77,7 @@ public:
         return counts;
     }
 
-    std::vector<int> get_all(const token_t& token, CollectionRange<MapHistogramCollection>& range) const {
+    std::vector<int> get_all(const token_t& token, CollectionRange<MapHistogramCollection> range) const {
         std::vector<int> counts(histograms_.size(), 0);
         for (const auto cluster_idx : range) 
             counts[cluster_idx] = get(cluster_idx, token);
