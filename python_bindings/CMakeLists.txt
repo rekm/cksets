@@ -4,6 +4,9 @@ find_package(pybind11 REQUIRED)
 # pybind11 module
 pybind11_add_module(_ksets_cpp bindings.cpp)
 
+#set(CMAKE_CXX_FLAGS "-lasan -fsanitize=address -fno-omit-frame-pointer -g")
+target_compile_options(_ksets_cpp PRIVATE -fno-lto)
+
 # Link against your core library
 target_link_libraries(_ksets_cpp
     PRIVATE
@@ -11,6 +14,8 @@ target_link_libraries(_ksets_cpp
         seqan3::seqan3
         seqan::hibf
 )
+
+
 
 # Make sure headers work
 target_include_directories(_ksets_cpp
