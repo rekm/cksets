@@ -24,7 +24,7 @@ namespace hashing {
 
         std::size_t operator()(token_t const &key) const noexcept {
             uint32_t out; // MurmurHash3_x86_32 writes 32 bits = 4 bytes
-            MurmurHash3_x86_32(key.data(), key.size(), seed, &out);
+            MurmurHash3_x86_32(&key, sizeof(key), seed, &out);
             return static_cast<size_t>(out);
         }
     };
