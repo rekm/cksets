@@ -9,11 +9,14 @@ namespace ksets {
         protected:
             HistogramCollection& H_;
             const std::vector<std::vector<token_t>>& data_;
-            int iteration_ = 0;   
+            int iteration_ = 0;
+            bool histograms_provided_ = false;   
         public:
-            HistogramUpdatePolicy(HistogramCollection& h,
-                                const std::vector<std::vector<token_t>>& d)
-                : H_(h), data_(d) {}
+            HistogramUpdatePolicy(
+                        HistogramCollection& h,
+                        const std::vector<std::vector<token_t>>& d,
+                        bool histograms_provided = false)
+                : H_(h), data_(d), histograms_provided_(histograms_provided){}
 
             void before_iteration(size_t it_idx) {
                 #ifdef DEBUG_BASE
@@ -33,11 +36,11 @@ namespace ksets {
                 derived().register_move_impl(row, from, to);
             }
 
-            void commit(std::vector<int>& labels_cur) {
+            void commit(std::vector<label_t>& labels_cur) {
                 derived().commit_impl(labels_cur);
             }
 
-            void rollback(std::vector<int>& labels_cur) {
+            void rollback(std::vector<label_t>& labels_cur) {
                 derived().rollback_impl(labels_cur);
             }
             

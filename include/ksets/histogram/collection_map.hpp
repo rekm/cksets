@@ -3,23 +3,28 @@
 #include <string>
 #include <ksets/types.hpp>
 #include <ksets/histogram/map.hpp>
+#include <ksets/histogram/map_robin.hpp>
 #include <ksets/histogram/collection_base.hpp>
 
 namespace ksets::histogram {
 
-template <typename HashPolicy, typename AllocatorPolicy = std::allocator<std::pair<const token_t,int>>>
+using MapVal = hist_count_t;
+
+
+template <typename HashPolicy, typename AllocatorPolicy = std::allocator<std::pair<const token_t,label_t>>>
 class MapHistogramCollection
     : public BaseHistogramCollection<MapHistogramCollection<HashPolicy, AllocatorPolicy>>
 {
-    std::vector<MapHistogram<HashPolicy, AllocatorPolicy>> histograms_;
+    using MapHistType = ksets::histogram::MapRobinHistogram<HashPolicy, AllocatorPolicy>;
+    std::vector<MapHistType> histograms_;
     size_t K_;
     HashPolicy hash_;
     AllocatorPolicy alloc_;
 
 public:
-    using MapHistType = ksets::histogram::MapHistogram<HashPolicy, AllocatorPolicy>;
+    
     explicit MapHistogramCollection(size_t K, HashPolicy hash = {}, AllocatorPolicy alloc = {})
-        : histograms_(K, MapHistogram<HashPolicy, AllocatorPolicy>(hash, alloc)), K_(K), alloc_(alloc) {}
+        : histograms_(K, MapHistType(hash, alloc)), K_(K), alloc_(alloc) {}
 
     MapHistType& operator[](size_t i) { return histograms_[i]; }
     const MapHistType& operator[](size_t i) const { return histograms_[i]; }
@@ -51,7 +56,7 @@ public:
         }
     }
 
-    int get(size_t cluster, const token_t& token) const {
+    MapVal get(size_t cluster, const token_t& token) const {
         return histograms_[cluster].get(token);
     }
 
@@ -61,8 +66,8 @@ public:
         }
     }
 
-    std::vector<int> totals() const {
-        std::vector<int> sums;
+    std::vector<MapVal> totals() const {
+        std::vector<MapVal> sums;
         sums.reserve(histograms_.size());
         for (const auto& h : histograms_) {
             sums.push_back(h.total()); // h.total() sums counts inside that histogram
@@ -70,18 +75,13 @@ public:
         return sums;
     }
 
-    std::vector<int> get_all(const token_t& token) const {
-        std::vector<int> counts;
-        counts.reserve(histograms_.size());
-        for (auto const& h : histograms_) counts.push_back(h.get(token));
-        return counts;
+    void get_all(const token_t& token, std::vector<MapVal>& out) const {
+        for (auto const& h : histograms_) out.push_back(h.get(token));
     }
 
-    std::vector<int> get_all(const token_t& token, CollectionRange<MapHistogramCollection> range) const {
-        std::vector<int> counts(histograms_.size(), 0);
+    void get_all(const token_t& token, std::vector<MapVal>& out, CollectionRange<MapHistogramCollection> range) const {
         for (const auto cluster_idx : range) 
-            counts[cluster_idx] = get(cluster_idx, token);
-        return counts;
+            out[cluster_idx] = get(cluster_idx, token);
     }
 
     size_t size() const { return histograms_.size(); }

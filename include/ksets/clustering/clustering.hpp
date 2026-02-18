@@ -3,28 +3,35 @@
 #include <ksets/histogram/collection_base.hpp>
 #include <ksets/clustering/histogram_update_policy.hpp>
 #include <ksets/clustering/histogram_preselect_policy.hpp>
+#include <ksets/hashing/murmur_hash.hpp>
+#include <ksets/clustering/clustering.hpp>
+#include <ksets/distance/jaccard.hpp>
 #include <ksets/types.hpp>
 #include <string> 
 #include <format>
 #include <tuple>
-#include <iostream> 
+#include <numeric>
+#include <iostream>
+#include <algorithm>
+#include <ranges>
+#include <vector>
 //using Histogram = std::unordered_map<std::string, int, ksets::MurmurHash>;
 
 namespace ksets
 {
     
 struct ClusterResult {
-    std::vector<int> labels;
-    std::vector<std::vector<int>> histograms;
+    std::vector<label_t> labels;
+    std::vector<std::vector<hist_count_t>> histograms;
     std::vector<double> sumd;
 };
 
 template <class HistogramCollection>
-std::vector<std::vector<int>> to_hist_output_format(
+std::vector<std::vector<hist_count_t>> to_hist_output_format(
     const HistogramCollection& hist_vec,
     int max_hist_length
 ){
-    std::vector<std::vector<int>> out;
+    std::vector<std::vector<hist_count_t>> out;
     out.reserve(hist_vec.size());
 
     for (size_t i = 0; i < hist_vec.size(); ++i) {
@@ -41,19 +48,22 @@ ClusterResult cluster_cpp(
         int K,
         int max_hist_length,
         HistogramCollection& histograms,
-        int max_iter = 50){
-    
+        int max_iter = 50, 
+        int seed = 42){
+    bool histograms_provided = ! histograms.empty();
     HistogramPreselectPolicy<HistogramCollection> histPreselector(histograms, data);
-    HistogramUpdatePolicy<HistogramCollection> histUpdater(histograms, data);
+    HistogramUpdatePolicy<HistogramCollection> histUpdater(histograms, data, histograms_provided);
     if (max_iter == 0)
         max_iter = 50;
 
-    std::vector<int> labels_cur(data.size());
-    std::vector<int> labels_prev(data.size());
+    std::vector<label_t> labels_cur(data.size());
+    std::vector<label_t> labels_prev(data.size());
     // Build initial histograms
-    if (histograms.empty()){
+    auto randomizer = ksets::hashing::HashPolicy<ksets::hashing::MurmurHash>(ksets::hashing::MurmurHash(seed));
+    
+    if (! histograms_provided){
         for (size_t i = 0; i < data.size(); i++) {
-            int cluster = i % K;
+            size_t cluster = randomizer(i) % K;
             labels_cur[i] = cluster;
             for (auto const& token : data[i]) {
                 histograms.increment(cluster, token);
@@ -65,12 +75,12 @@ ClusterResult cluster_cpp(
     double sdth = std::numeric_limits<double>::max();
     std::vector<double> sumd_prev(K,0);
     std::vector<double> sumd(K,0);
-    std::vector<int> hist_sums = histograms.totals();
-    //for (size_t i = 0; i < hist_sums.size(); ++i) {
-    //    std::cout << "Cluster " << i << " total: " << hist_sums[i] << "\n";
-    //}
+    std::vector<hist_count_t> hist_sums = histograms.totals();
+    /*for (size_t i = 0; i < hist_sums.size(); ++i) {
+        std::cout << "Cluster " << i << " total: " << hist_sums[i] << "\n";
+    }*/
     
-    std::vector<int> test_val(K,0);
+    std::vector<hist_count_t> test_val(K,0);
     std::vector<int> miss_val(K,0);
     std::vector<int> test_sum_val(K,0);  
     // monitoring the cluster sizes 
@@ -81,7 +91,7 @@ ClusterResult cluster_cpp(
     std::vector<std::pair<size_t, double>> clusters_empty;
     std::vector<std::pair<double, size_t>> most_distant(K, {0.0, 0}); 
     //Main Loop
-    while (std::abs(sdth_old - sdth) > 0.00001 && j < max_iter){
+    while ((std::abs(sdth_old - sdth) > 0.00001 ) && (j < max_iter)){
         
         histUpdater.before_iteration(j);
         histPreselector.before_iteration(j);
@@ -104,7 +114,8 @@ ClusterResult cluster_cpp(
             cluster_sizes[curr_cluster]++ ; // incrementing the cluster counter
             auto histRange = histPreselector.get_candidate_histograms(data[i]);
             for (auto const& token : data[i]) {
-                    test_val = histograms.get_all(token, histRange);
+                    std::fill(test_val.begin(), test_val.end(), 0);
+                    histograms.get_all(token, test_val, histRange);
                     std::transform(test_val.begin(), test_val.end(),
                         miss_val.begin(),
                         miss_val.begin(),
@@ -167,14 +178,14 @@ ClusterResult cluster_cpp(
             
             std::fill(miss_val.begin(), miss_val.end(), 0);
             std::fill(test_sum_val.begin(), test_sum_val.end(), 0);
-            test_val.clear();
+            //test_val.clear();
         } // Iteration over Data rows
         #ifdef DEBUG_DESPERATION
             std::cout << std::format("SUMD = ");
             for (auto ds: sumd)
                 std::cout << std::format("{0:0.6f}, ", ds);
             std::cout << "\n";
-            std::cout << std::format("SDTH = {0:0.6f}\n",sdth);
+            std::cout << std::format("SDTH = {0:0.6f} , SDTH_OLD = {1:0.6f} \n",sdth, sdth_old);
         #endif
         
 
@@ -187,7 +198,7 @@ ClusterResult cluster_cpp(
             //histograms = hist_prev; is ksets equivalent
             break;
         }
-        if (j==0){
+        if (j==0 && histograms_provided){
             histograms.zero_out();
         } 
         //4.3. Recompute histograms by applying histogram changes using data rows
@@ -207,6 +218,41 @@ ClusterResult cluster_cpp(
                 histograms[idx].debug_print();
         #endif
         ++j;
+    }
+    std::vector<std::size_t> hist_lengths;
+    hist_lengths.reserve(histograms.size());
+    double avg_hist_len = 0;
+    size_t median_hist_len = 0;
+    size_t num_hists = histograms.size();
+    for (size_t idx=0; idx < num_hists; ++idx) {
+        avg_hist_len += histograms[idx].size();
+        hist_lengths.push_back(histograms[idx].size()); 
+    }
+    std::sort(hist_lengths.begin(), hist_lengths.end());
+    if (hist_lengths.size() % 2 == 0)
+    {
+      median_hist_len = (hist_lengths[num_hists / 2 - 1] + hist_lengths[num_hists / 2]) / 2;
+    }
+    else 
+    {
+      median_hist_len = hist_lengths[num_hists / 2];
+    }
+    
+    avg_hist_len = avg_hist_len / num_hists; 
+    std::cout << "Total Iterations: " << j << "\n"
+              << "Avg Histogram Size: " << avg_hist_len << "\n"
+              << "Median Histogram Size: " << median_hist_len << "\n"
+              << "Sum of Total Distances: " << sdth << "\n"; 
+    size_t hist_quant = 1;
+    double hist_quant_perc = 0; 
+    for (const auto& chunk : hist_lengths | std::views::chunk(std::max(num_hists / 10, size_t{1}) )) {
+        auto chunk_avg = std::reduce(chunk.begin(), chunk.end()) / chunk.size();
+        double chunk_perc = chunk.size()/ double{num_hists};
+        std::cout << "AVG Histogram Size N-Tile " << hist_quant 
+                  << "(n=" << chunk.size() << ", " << hist_quant_perc << "-" << std::min(hist_quant_perc + chunk_perc, 1.0) * 100 
+                  << "%) = " << chunk_avg << "\n";
+        hist_quant_perc += chunk_perc;
+        hist_quant++;  
     }
     // 5. Results
 

@@ -13,9 +13,11 @@ namespace ksets {
                             HistogramCollection>;
         using Base::Base;
         using Base::iteration_;
-        explicit HistUpdaterKsetsAuthors(HistogramCollection& hist,
-                            const std::vector<std::vector<token_t>>& data)
-            : Base(hist, data),  
+        explicit HistUpdaterKsetsAuthors(
+                        HistogramCollection& hist,
+                        const std::vector<std::vector<token_t>>& data, 
+                        bool histograms_provided = false)
+            : Base(hist, data, histograms_provided),  
             hists_(hist), data_(data), prev_hists_(hist.clone_empty())
         {}
 
@@ -23,7 +25,7 @@ namespace ksets {
 
         void register_move_impl(size_t row, size_t from, size_t to) {}
 
-        void commit_impl(std::vector<int>& labels_cur) {
+        void commit_impl(std::vector<label_t>& labels_cur) {
             // Apply all buffered changes
             prev_hists_.clear();
             swap(prev_hists_, hists_);
@@ -35,7 +37,7 @@ namespace ksets {
             }
         }
 
-        void rollback_impl(std::vector<int>& labels_cur) {
+        void rollback_impl(std::vector<label_t>& labels_cur) {
             // Undo last commit
             hists_.clear();
             swap(hists_, prev_hists_);

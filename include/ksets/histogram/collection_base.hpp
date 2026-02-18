@@ -26,7 +26,7 @@ namespace ksets::histogram {
         }
 
         // Get token count for a single histogram (default: first histogram)
-        int get(const token_t& token) const {
+        hist_count_t get(const token_t& token) const {
             return derived().get(token);
         }
 
@@ -39,11 +39,11 @@ namespace ksets::histogram {
         }
 
         // Query all histograms in the collection at once
-        std::vector<int> get_all(const token_t& token) const {
-            if constexpr (requires(const Derived d) { d.query_all(token); }) {
-                return derived().query_all(token);
+        void get_all(const token_t& token, std::vector<hist_count_t>& out) const {
+            if constexpr (requires(const Derived d) { d.query_all(token, out); }) {
+                derived().query_all(token, out);
             } else {
-                return {derived().get(token)};
+                derived().get(token, out);
             }
         }
     };

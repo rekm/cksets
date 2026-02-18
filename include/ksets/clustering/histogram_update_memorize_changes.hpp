@@ -14,9 +14,10 @@ namespace ksets {
         using Base::Base;
         using Base::iteration_;
         explicit HistUpdaterMemorizeChanges(HistogramCollection& hist,
-                            const std::vector<std::vector<token_t>>& data)
-            : Base(hist, data),  
-            hists_(hist), data_(data)
+                            const std::vector<std::vector<token_t>>& data, 
+                            bool histograms_provided = false)
+            : Base(hist, data, histograms_provided),  
+            hists_(hist), data_(data), histograms_provided_(histograms_provided)
         {}
 
         void before_iteration_impl(size_t it_idx) {
@@ -26,28 +27,39 @@ namespace ksets {
             changes_.emplace_back(row, from, to);
         }
 
-        void commit_impl(std::vector<int>& labels_cur) {
+        void commit_impl(std::vector<label_t>& labels_cur) {
             // Apply all buffered changes
             //std::cout << std::format("Comitting for iteration {0:d}\n", Base::iteration_);
-            for (auto const& change : changes_){
-                size_t row_idx, old_cluster, new_cluster;
-                std::tie(row_idx, old_cluster, new_cluster) = change;
-                //labels_cur[row_idx] = new_cluster;
-                
-                #ifdef DEBUG_DESPERATION
-                    std::cout << std::format("D_change[{0:d}] = {1:d} -> {2:d}\n", row_idx, old_cluster, new_cluster);
-                #endif
-                for (auto const& token : data_[row_idx]) {
-                    if (Base::iteration_ != 0)
-                        hists_.decrement(old_cluster, token);
-                    hists_.increment(new_cluster, token);
+            if (histograms_provided_ && (Base::iteration_ == 0)) {
+                hists_.clear();
+                for (size_t i = 0; i < data_.size(); i++) {
+                    for (auto const& token : data_[i]) {
+                        hists_.increment(labels_cur[i], token);
+                    }
                 }
+            } else {
+                for (auto const& change : changes_){
+                    size_t row_idx, old_cluster, new_cluster;
+                    std::tie(row_idx, old_cluster, new_cluster) = change;
+                    //labels_cur[row_idx] = new_cluster;
+                    
+                    #ifdef DEBUG_DESPERATION
+                        std::cout << std::format("D_change[{0:d}] = {1:d} -> {2:d}\n", row_idx, old_cluster, new_cluster);
+                    #endif
+                    for (auto const& token : data_[row_idx]) {
+                        //if (histograms_provided_ || (Base::iteration_ != 0))
+                        hists_.decrement(old_cluster, token);
+                        hists_.increment(new_cluster, token);
+                    }
+                }
+                std::cout << "Iteration "<< Base::iteration_ << " , Changes: " << changes_.size() << "\n";
+                prev_changes_.swap(changes_);
             }
-            prev_changes_.swap(changes_);
+            
             changes_.clear();
         }
 
-        void rollback_impl(std::vector<int>& labels_cur) {
+        void rollback_impl(std::vector<label_t>& labels_cur) {
             // Undo last commit
             for (auto it = prev_changes_.rbegin(); it != prev_changes_.rend(); ++it){
                 size_t row_idx, old_cluster, new_cluster;
@@ -62,6 +74,7 @@ namespace ksets {
         }
 
     private:
+        bool histograms_provided_ = false;
         HistogramCollection& hists_;
         const std::vector<std::vector<token_t>>& data_;
         // Tracking changes for histogram/cluster reassignment
