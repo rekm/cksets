@@ -27,6 +27,7 @@ namespace hashing {
             MurmurHash3_x86_32(&key, sizeof(key), seed, &out);
             return static_cast<size_t>(out);
         }
+
     };
 
 }

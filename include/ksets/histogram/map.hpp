@@ -9,14 +9,14 @@ namespace histogram {
 
 template <
     class HashPolicy,
-    class AllocatorPolicy = std::allocator<std::pair<const token_t,int>>
+    class AllocatorPolicy = std::allocator<std::pair<const token_t,size_t>>
 >
 class MapHistogram : 
     public HistogramBase<MapHistogram<HashPolicy, AllocatorPolicy >>
 {
     using MapType = std::unordered_map<
         token_t,
-        int,
+        size_t,
         HashPolicy,
         std::equal_to<token_t>,
         AllocatorPolicy
@@ -74,6 +74,10 @@ public:
         std::cout << "\n";
     }
 
+    size_t size() const {
+        return freq.size();
+    }
+
     int total() const {
         int sum = 0;
         for (const auto& kv : freq) {
@@ -82,11 +86,11 @@ public:
         return sum;
     }
 
-    std::vector<int> values(int max_hist_length = std::numeric_limits<int>::max()) const {
-        std::vector<int> out;
+    std::vector<size_t> values(int max_hist_length = std::numeric_limits<int>::max()) const {
+        std::vector<label_t> out;
         out.reserve(std::min<size_t>(freq.size(), max_hist_length));
 
-        int count = 0;
+        size_t count = 0;
         for (auto const &kv : freq) {
             out.push_back(kv.second);
             if (++count == max_hist_length) break;

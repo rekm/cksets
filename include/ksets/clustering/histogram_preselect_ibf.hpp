@@ -67,7 +67,7 @@ namespace ksets {
         }
 
 
-        void update_impl(std::vector<int>& labels_cur) {
+        void update_impl(std::vector<label_t>& labels_cur) {
             ibf_.clear(all_bins_);
             before_iteration_impl(0);
             cluster_agent_ = ibf_.containment_agent();

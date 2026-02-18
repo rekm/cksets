@@ -30,7 +30,7 @@ namespace ksets {
         }
 
 
-        void update_impl(std::vector<int>& labels_cur) {
+        void update_impl(std::vector<label_t>& labels_cur) {
         }
 
         

@@ -25,7 +25,7 @@ namespace ksets {
                 return derived().get_candidate_histograms_impl(data_row);
             }
 
-            void update(std::vector<int>& labels_cur) {
+            void update(std::vector<label_t>& labels_cur) {
                 derived().update_impl(labels_cur);
             }
             
