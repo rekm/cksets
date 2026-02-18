@@ -17,6 +17,7 @@ find_dependency(seqan3 REQUIRED)
 find_dependency(sharg REQUIRED)
 find_dependency(hibf REQUIRED)
 find_dependency(use_ccache REQUIRED)
+find_dependency(tsl-robin-map REQUIRED)
 
 #include("${CMAKE_CURRENT_LIST_DIR}/KSetsTargets.cmake")
 

@@ -5,7 +5,7 @@
 cmake_minimum_required (VERSION 3.25...3.30)
 
 # ----------------------------------------------------------------------------
-# Short-circuit if Raptor is already configured
+# Short-circuit if Ksets is already configured
 # ----------------------------------------------------------------------------
 
 if (TARGET ksets::interface)
@@ -56,13 +56,7 @@ if (KSETS_HAS_LTO)
     set (CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif ()
 
-# ----------------------------------------------------------------------------
-# CPM
-# ----------------------------------------------------------------------------
 
-set (CPM_INDENT "  CMake Package Manager CPM: ")
-include (${KSets_SOURCE_DIR}/cmake/CPM.cmake)
-CPMUsePackageLock (${KSets_SOURCE_DIR}/cmake/package-lock.cmake)
 
 
 # ----------------------------------------------------------------------------
@@ -83,58 +77,34 @@ endif()
 
 
 
-# ----------------------------------------------------------------------------
-# Find or add dependencies
-# ----------------------------------------------------------------------------
 
-CPMGetPackage (use_ccache)
-CPMGetPackage (hibf)
-CPMGetPackage (sharg)
-CPMGetPackage (seqan3)
-CPMGetPackage (pybind11)
-
-# Only include Chopper if your project uses HIBF layout computation
-option(KSETS_USE_CHOPPER "Enable chopper dependency" OFF)
-if(KSETS_USE_CHOPPER)
-    CPMGetPackage(chopper)
-endif()
 
 # ----------------------------------------------------------------------------
 # Interface target
 # ----------------------------------------------------------------------------
 
-add_library(ksets_interface INTERFACE IMPORTED)
+#add_library(ksets_interface INTERFACE)
+#
+#target_include_directories(ksets_interface
+#    INTERFACE
+#        $<BUILD_INTERFACE:${KSETS_INCLUDE_DIR}>
+#        $<INSTALL_INTERFACE:include>
+#)
 
-target_include_directories(ksets_interface
-    INTERFACE
-        "${KSETS_INCLUDE_DIR}"
-)
+#target_link_libraries(ksets_interface
+#    INTERFACE
+#        $<BUILD_INTERFACE:seqan3::seqan3>
+#        $<BUILD_INTERFACE:seqan::hibf>
+#        $<BUILD_INTERFACE:sharg::sharg>
+#        $<BUILD_INTERFACE:tsl::robin_map>
 
-target_link_libraries(ksets_interface
-    INTERFACE
-        seqan3::seqan3
-        seqan::hibf
-        sharg::sharg
-)
+#        $<INSTALL_INTERFACE:seqan3::seqan3>
+#        $<INSTALL_INTERFACE:seqan::hibf>
+#        $<INSTALL_INTERFACE:sharg::sharg>
+#        $<INSTALL_INTERFACE:tsl::robin_map>
+#)
 
 # If Chopper is enabled:
-if(KSETS_USE_CHOPPER)
-    target_link_libraries(ksets_interface INTERFACE chopper::interface)
-endif()
 
-# ----------------------------------------------------------------------------
-# Optional: Export seqan3 test utilities (only if needed)
-# ----------------------------------------------------------------------------
 
-option(KSETS_USE_SEQAN3_TEST_HEADERS "Expose SeqAn3 test utils" OFF)
-
-if(KSETS_USE_SEQAN3_TEST_HEADERS)
-    find_path(SEQAN3_TEST_INCLUDE_DIR
-              NAMES seqan3/test/tmp_directory.hpp
-              HINTS "${seqan3_SOURCE_DIR}/test/include"
-    )
-    target_include_directories(ksets_interface SYSTEM INTERFACE "${SEQAN3_TEST_INCLUDE_DIR}")
-    ksets_config_print("Added seqan3 test headers: ${SEQAN3_TEST_INCLUDE_DIR}")
-endif()
-
-add_library(ksets::interface ALIAS ksets_interface)
+#add_library(ksets::interface ALIAS ksets_interface)
