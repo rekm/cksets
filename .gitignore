@@ -2,6 +2,8 @@
 # External
 external/*/*
 
+benchmarks/benchmarks
+benchmarks/results
 # Python
 
 # Byte-compiled / optimized / DLL files
