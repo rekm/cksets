@@ -104,6 +104,15 @@ CPMDeclarePackage (pybind11
                    GITHUB_REPOSITORY pybind/pybind11
                    SYSTEM TRUE)
 
+# robinmap
+set (KSETS_ROBINMAP_VERSION 1.4.1 CACHE STRING "")
+CPMDeclarePackage (robinmap
+                   NAME robinmap
+                   VERSION ${KSETS_ROBINMAP_VERSION} # main
+                   GITHUB_REPOSITORY Tessil/robin-map
+                   SYSTEM TRUE)
+
+
 # cmake-format: on
 
 
