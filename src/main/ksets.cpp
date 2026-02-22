@@ -12,11 +12,15 @@
 #include <ksets/clustering/histogram_preselect_nothing.hpp>
 #include <ksets/clustering/histogram_preselect_ibf.hpp>
 #include <ksets/types.hpp>
+#include <ksets/telemetry.hpp>
 
 
 
 
-void parse_data(csv::CSVReader & reader, std::vector<std::vector<ksets::token_t>> & data, ksets::token_encoder::ReversibleInterning &encoder){
+void parse_data(
+        csv::CSVReader & reader, 
+        std::vector<std::vector<ksets::token_t>> & data, 
+        ksets::token_encoder::ReversibleInterning &encoder){
     for (csv::CSVRow& row: reader) { // Input iterator
         std::vector<ksets::token_t> encoded_row;
         for (csv::CSVField& field: row) {
@@ -29,6 +33,98 @@ void parse_data(csv::CSVReader & reader, std::vector<std::vector<ksets::token_t>
     }
 
 } 
+
+struct CerrSink {
+    // Maximum telemetry level this sink will handle
+    static constexpr ksets::telemetry::TelemetryLevel level =
+        ksets::telemetry::TelemetryLevel::basic;
+
+    template<class Event>
+    void handle(const Event& e) const {
+        print(e);
+    }
+
+private:
+    mutable size_t savings_events = 0;
+    mutable double savings_preselect = 0.0;
+
+    // Generic fallback (if no specific overload exists)
+    template<class Event>
+    void print(const Event& e) const {
+        std::cerr << "[Telemetry] Event: " << typeid(e).name() << "\n";
+    }
+
+    void print(const ksets::PreselectSavingsTelemetry& e) const {
+        savings_preselect += 1.0 - double(e.total_hists_touched) / double(e.total_tokens * e.K);
+        savings_events++;
+          
+    }
+
+    void print(const ksets::AlgorithmStart& e ) const {
+        std::cerr << "[Algorithm Initialized]\n" 
+                  << "Histograms Provided: " << (e.histograms_provided ? "TRUE" : "FALSE") 
+                  << "\nData Size: " << e.n_items << "\n";
+    }
+
+    void print(const ksets::DistanceMeasureTelemetry& e) const {
+        std::cerr << "[Iteration " << e.iter << ", Data Row: " << e.data_row << " ]" ;
+        size_t iter = 0;
+        char* sep = " "; 
+        for ( const auto &dist: e.distances) {
+            std::cerr << sep << iter << ": " << dist;
+            ++iter;
+            sep = ", ";
+        }
+        std::cerr <<  "\n";
+    }
+
+    void print(const ksets::LabelSelectTelemetry& e) const {
+        std::cerr << "[Iteration " << e.iter << ", Data Row: " << e.data_row << " ] " 
+                 << "Dist( " << e.old_label << " ) = " << e.old_dist << " --> "
+                 << "Dist( " << e.new_label << " ) = " << e.new_dist << "\n";
+    }
+
+    // IterationMetrics specialization
+    void print(const ksets::IterationMetrics& e) const {
+        
+        std::cerr << "[Iteration " << e.iter << "] "
+                  << "Objective: " << e.objective
+                  << ", Delta: " << e.delta;
+        if (savings_events > 0){
+            double avg_savings = savings_preselect / double{savings_events};
+            std::cerr << ", Avg Preselect Savings: " << avg_savings * 100 << "%";  
+        }          
+        savings_events = 0;
+        savings_preselect = 0.0;
+        std::cerr << "\n"; 
+    }
+
+    // RunSummary example
+    void print(const ksets::RunSummary& e) const {
+        std::cerr << "[ Final Summary ]\n";     
+        std::cerr << "Total Iterations: " << e.iterations << "\n"
+                << "Avg Histogram Size: " << e.hist.avg << "\n"
+                << "Median Histogram Size: " << e.hist.median << "\n"
+                << "Sum of Total Distances: " << e.sum_distances << "\n"; 
+        /*size_t hist_quant = 1;
+        double hist_quant_perc = 0; 
+        for (const auto& chunk : hist_lengths | std::views::chunk(std::max(num_hists / 10, size_t{1}) )) {
+            auto chunk_avg = std::reduce(chunk.begin(), chunk.end()) / chunk.size();
+            double chunk_perc = chunk.size()/ double{num_hists};
+            std::cout << "AVG Histogram Size N-Tile " << hist_quant 
+                    << "(n=" << chunk.size() << ", " << hist_quant_perc << "-" << std::min(hist_quant_perc + chunk_perc, 1.0) * 100 
+                    << "%) = " << chunk_avg << "\n";
+            hist_quant_perc += chunk_perc;
+            hist_quant++;  
+        }
+            std::cerr << "[Run Summary] "
+                    << "Iterations: " << e.iterations
+                    << ", AvgHist: " << e.avg_hist
+                    << ", MedianHist: " << e.median_hist
+                    << ", SumDistances: " << e.sum_distances
+                    << "\n";*/
+    }
+};
 
 
 // Stub was generated using ChatGTP and the following prompt
@@ -98,6 +194,7 @@ int main(int argc, char ** argv)
         format.delimiter(' ')
             .trim({'\t'})
             .no_header().quote(false);
+    CerrSink cerr_sink{};
     ksets::token_encoder::ReversibleInterning encoder;    
     csv::CSVReader reader(data_file.string(), format); 
     std::vector<std::vector<ksets::token_t>> data;
@@ -132,13 +229,13 @@ int main(int argc, char ** argv)
                 decltype(hist_collection), 
                 ksets::HistUpdaterMemorizeChanges,
                 ksets::HistPreselectNothing
-                >(data, number_of_clusters, max_hist_length, hist_collection, max_iter, seed); 
+                >(data, number_of_clusters, max_hist_length, hist_collection, max_iter, seed, cerr_sink); 
         } else if (preselect == "ibf") {
             r = ksets::cluster_cpp<
                 decltype(hist_collection), 
                 ksets::HistUpdaterMemorizeChanges,
                 ksets::HistPreselectIBF
-                >(data, number_of_clusters, max_hist_length, hist_collection, max_iter, seed);
+                >(data, number_of_clusters, max_hist_length, hist_collection, max_iter, seed, cerr_sink);
         }
     } else if (hist_rebuild == "full"){
         if (preselect == "none") {
@@ -146,13 +243,13 @@ int main(int argc, char ** argv)
                 decltype(hist_collection), 
                 ksets::HistUpdaterKsetsAuthors,
                 ksets::HistPreselectNothing
-                >(data, number_of_clusters, max_hist_length, hist_collection, max_iter, seed); 
+                >(data, number_of_clusters, max_hist_length, hist_collection, max_iter, seed, cerr_sink); 
         } else if (preselect == "ibf") {
             r = ksets::cluster_cpp<
                 decltype(hist_collection), 
                 ksets::HistUpdaterKsetsAuthors,
                 ksets::HistPreselectIBF
-                >(data, number_of_clusters, max_hist_length, hist_collection, max_iter, seed);
+                >(data, number_of_clusters, max_hist_length, hist_collection, max_iter, seed, cerr_sink);
         }
     } else {
         throw std::runtime_error("Unknown hist_rebuild option: " + hist_rebuild +
