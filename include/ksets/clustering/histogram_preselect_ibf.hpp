@@ -1,10 +1,11 @@
 #pragma once
 #include <ksets/clustering/histogram_preselect_policy.hpp>
 #include <ksets/histogram/collection_iterator.hpp>
-#include <ksets/types.hpp> // for token_t
+#include <ksets/types.hpp> // for token_t, move_t
 #include <hibf/interleaved_bloom_filter.hpp> // for bin_index, interleaved_bloom_filter, bin_count, bin_size, hash_...
 #include <hibf/misc/print.hpp>               // for print, print_t
 #include <hibf/misc/bit_vector.hpp>
+#include <hibf/build/bin_size_in_bits.hpp>
 #include <ranges>
 #include <numeric>
 #include <vector>
@@ -28,9 +29,7 @@ namespace ksets {
                             const std::vector<std::vector<token_t>>& data)
             : Base(hist, data),  
             hists_(hist), data_(data), indices_(hist.size()), 
-            ibf_(seqan::hibf::bin_count{hist.size()},
-                 seqan::hibf::bin_size{128u},
-                 seqan::hibf::hash_function_count{3u})
+            ibf_(make_ibf(hist, data, 3u))
         {
             std::iota(indices_.begin(), indices_.end(), 0);
             all_bins_.reserve(ibf_.bin_count());
@@ -73,6 +72,10 @@ namespace ksets {
             cluster_agent_ = ibf_.containment_agent();
         }
 
+        void update_from_changes(std::vector<Change>& changes){
+
+
+        } 
 
 
     private:
@@ -91,6 +94,25 @@ namespace ksets {
                 if (bv[i])
                     *out++ = i;
             }
+        }
+
+        static auto make_ibf(
+                HistogramCollection& hists,
+                const std::vector<std::vector<token_t>>& data, size_t hash_fun_count=3){
+        size_t avg_elements = 1;
+        for (size_t idx=0; idx< hists.size(); idx++)
+            avg_elements = std::max<size_t>(avg_elements, hists[idx].size());
+
+        seqan::hibf::build::bin_size_parameters params{};
+        params.elements   = 200 * avg_elements;
+        params.hash_count = hash_fun_count;
+        params.fpr        = 0.02;
+
+        return seqan::hibf::interleaved_bloom_filter{
+            seqan::hibf::bin_count{hists.size()},
+            seqan::hibf::bin_size{
+                seqan::hibf::build::bin_size_in_bits(params)},
+            seqan::hibf::hash_function_count{hash_fun_count}};
         }
     };
 
