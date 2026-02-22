@@ -4,6 +4,9 @@
 
 namespace ksets {
 
+    
+
+
     template <typename HistogramCollection>
     class HistUpdaterMemorizeChanges
         : public HistogramUpdatePolicy<HistUpdaterMemorizeChanges<HistogramCollection>, HistogramCollection>
@@ -38,21 +41,15 @@ namespace ksets {
                     }
                 }
             } else {
-                for (auto const& change : changes_){
-                    size_t row_idx, old_cluster, new_cluster;
-                    std::tie(row_idx, old_cluster, new_cluster) = change;
-                    //labels_cur[row_idx] = new_cluster;
-                    
-                    #ifdef DEBUG_DESPERATION
-                        std::cout << std::format("D_change[{0:d}] = {1:d} -> {2:d}\n", row_idx, old_cluster, new_cluster);
-                    #endif
+                for (auto & change : changes_){
+                    auto & [row_idx, old_cluster, new_cluster, old_token_removed, new_token_created] = change;
                     for (auto const& token : data_[row_idx]) {
                         //if (histograms_provided_ || (Base::iteration_ != 0))
-                        hists_.decrement(old_cluster, token);
-                        hists_.increment(new_cluster, token);
+                        old_token_removed = hists_.decrement(old_cluster, token);
+                        new_token_created = hists_.increment(new_cluster, token);
                     }
                 }
-                std::cout << "Iteration "<< Base::iteration_ << " , Changes: " << changes_.size() << "\n";
+                std::cerr << "Iteration "<< Base::iteration_ << " , Changes: " << changes_.size() << "\n";
                 prev_changes_.swap(changes_);
             }
             
@@ -62,8 +59,7 @@ namespace ksets {
         void rollback_impl(std::vector<label_t>& labels_cur) {
             // Undo last commit
             for (auto it = prev_changes_.rbegin(); it != prev_changes_.rend(); ++it){
-                size_t row_idx, old_cluster, new_cluster;
-                std::tie(row_idx, old_cluster, new_cluster) = *it;
+                auto & [row_idx, old_cluster, new_cluster, old_token_removed, new_token_created] = *it;
                 labels_cur[row_idx] = old_cluster;
                 for (auto const& token : data_[row_idx]) {
                     hists_.decrement(new_cluster, token);
@@ -73,13 +69,17 @@ namespace ksets {
             } 
         }
 
+        std::vector<Change>& get_changes() {
+            return changes_;
+        }
+
     private:
         bool histograms_provided_ = false;
         HistogramCollection& hists_;
         const std::vector<std::vector<token_t>>& data_;
         // Tracking changes for histogram/cluster reassignment
-        std::vector<std::tuple<size_t, size_t, size_t>> changes_;
-        std::vector<std::tuple<size_t, size_t, size_t>> prev_changes_;
+        std::vector<Change> changes_;
+        std::vector<Change> prev_changes_;
     };
 
 } // namespace ksets

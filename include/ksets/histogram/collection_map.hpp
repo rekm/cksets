@@ -29,12 +29,12 @@ public:
     MapHistType& operator[](size_t i) { return histograms_[i]; }
     const MapHistType& operator[](size_t i) const { return histograms_[i]; }
 
-    void increment(size_t cluster, const token_t& token) {
-        histograms_[cluster].increment(token);
+    bool increment(size_t cluster, const token_t& token) {
+        return histograms_[cluster].increment(token);
     }
 
-    void decrement(size_t cluster, const token_t& token) {
-        histograms_[cluster].decrement(token);
+    bool decrement(size_t cluster, const token_t& token) {
+        return histograms_[cluster].decrement(token);
     }
 
     MapHistogramCollection clone_empty_impl() const {

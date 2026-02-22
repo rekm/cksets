@@ -31,10 +31,11 @@ public:
         : freq(0, hash, std::equal_to<token_t>(), alloc)
     {}
 
-    void increment(const token_t& token) {
+    bool increment(const token_t& token) {
         auto [it, inserted] = freq.try_emplace(token, 1);
         if (!inserted)
             ++it.value();
+        return inserted; 
     }
 
     void zero_out(){
@@ -55,15 +56,18 @@ public:
         return freq.size();
     }
 
-    void decrement(const token_t& token) {
+    bool decrement(const token_t& token) {
+        bool ret = false; 
         auto it = freq.find(token);
         if (it == freq.end()) {
-            return; // nothing to undo
+            return ret; // nothing to undo
         }
         auto& value = it.value();
         if (--value == 0) {
+            ret = true;
             freq.erase(it); // avoid zombie keys with value 0
         }
+        return ret;
     }
 
     hist_count_t get(const token_t& token) const {
