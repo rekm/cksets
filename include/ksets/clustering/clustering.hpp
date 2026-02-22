@@ -7,6 +7,7 @@
 #include <ksets/clustering/clustering.hpp>
 #include <ksets/distance/jaccard.hpp>
 #include <ksets/types.hpp>
+#include <ksets/telemetry.hpp>
 #include <string> 
 #include <format>
 #include <tuple>
@@ -15,6 +16,7 @@
 #include <algorithm>
 #include <ranges>
 #include <vector>
+#include <chrono>
 //using Histogram = std::unordered_map<std::string, int, ksets::MurmurHash>;
 
 namespace ksets
@@ -25,6 +27,28 @@ struct ClusterResult {
     std::vector<std::vector<hist_count_t>> histograms;
     std::vector<double> sumd;
 };
+
+struct AlgorithmStart {
+    static constexpr telemetry::TelemetryLevel level =
+        telemetry::TelemetryLevel::basic;
+
+    size_t n_items;
+    size_t k;
+    size_t max_iter;
+    bool histograms_provided;
+};
+
+struct IterationMetrics {
+    static constexpr telemetry::TelemetryLevel level =
+        telemetry::TelemetryLevel::basic;
+
+    size_t iter;
+    double objective;
+    double delta;
+    std::chrono::high_resolution_clock::time_point timestamp;
+};
+
+
 
 template <class HistogramCollection>
 std::vector<std::vector<hist_count_t>> to_hist_output_format(
@@ -39,28 +63,138 @@ std::vector<std::vector<hist_count_t>> to_hist_output_format(
     }
     return out;
 }
+    /*template <typename Updater>
+    concept DeltaUpdater = requires(Updater u) {
+        typename Updater::delta_capability;
+        { u.get_changes() };
+    };
+
+    template <typename Preselector>
+    concept DeltaPreselector = requires(Preselector p, auto& changes) {
+        typename Preselector::delta_capability;
+        { p.apply_changes(changes) };
+    };
+
+    template <typename Preselector, typename Updater>
+    void maybe_apply_delta(Preselector& pre, Updater& updater, const std::vector<label_t>& labels) {
+        if constexpr (DeltaUpdater<Updater> && DeltaPreselector<Preselector>) {
+            pre.apply_changes(updater.get_changes());
+        } else {
+            pre.update(labels);
+        }
+    }
+    */
+
+// Telemetry Events that can bew interceptet by a suitable Sink
+// They are compiled out, when a NullSink is used.
+
+struct HistogramStats {
+    double avg;                     // average histogram length
+    size_t median;                  // median histogram length
+    double sum_distances;           // total distance sum
+    std::vector<size_t> lengths;    // raw histogram lengths
+    std::vector<double> deciles;
+};
+
+struct RunSummary {
+    static constexpr telemetry::TelemetryLevel level =
+        telemetry::TelemetryLevel::basic;
+    static constexpr telemetry::TelemetryCategory category =
+        telemetry::TelemetryCategory::summary;
+
+    size_t iterations;
+    double sum_distances;
+    HistogramStats hist;
+};
+
+struct PreselectSavingsTelemetry{
+    static constexpr telemetry::TelemetryLevel level =
+        telemetry::TelemetryLevel::debug;
+    uint64_t total_tokens;
+    uint64_t K; 
+    uint64_t total_hists_touched;
+};
+
+struct DistanceMeasureTelemetry{
+    static constexpr telemetry::TelemetryLevel level=
+        telemetry::TelemetryLevel::trace;
+    
+    size_t iter;
+    size_t data_row;
+    std::vector<double> distances;
+};
+
+struct LabelSelectTelemetry{
+    static constexpr telemetry::TelemetryLevel level=
+        telemetry::TelemetryLevel::trace;
+    size_t iter;
+    size_t data_row;
+    label_t old_label;
+    label_t new_label;
+    double old_dist;
+    double new_dist;
+};
+
+HistogramStats compute_hist_stats(const auto& histograms) {
+    HistogramStats stats;
+    stats.lengths.reserve(histograms.size());
+    double sum_len = 0;
+    size_t num_hists = histograms.size();
+    for (size_t idx=0; idx < num_hists; ++idx) {
+        stats.lengths.push_back(histograms[idx].size());
+        sum_len += histograms[idx].size();
+    }
+    stats.avg = sum_len / histograms.size();
+
+    std::sort(stats.lengths.begin(), stats.lengths.end());
+    size_t n = stats.lengths.size();
+    stats.median = (n % 2 == 0) ? (stats.lengths[n/2 - 1] + stats.lengths[n/2]) / 2
+                                : stats.lengths[n/2];
+
+    size_t chunk_size = std::max(n / 10, size_t{1});
+    stats.deciles.reserve(10);
+    for (auto chunk : stats.lengths | std::views::chunk(chunk_size)) {
+        double chunk_avg = std::reduce(chunk.begin(), chunk.end()) / double(chunk.size());
+        stats.deciles.push_back(chunk_avg);
+    }
+
+    return stats;
+}
 
 template <class HistogramCollection, 
           template<class> class HistogramUpdatePolicy,
-          template<class> class HistogramPreselectPolicy>
+          template<class> class HistogramPreselectPolicy,
+          template<class> class DistancePolicy = distance::JaccardDistance,
+          telemetry::TelemetrySink Sink = telemetry::NullSink>
 ClusterResult cluster_cpp(
         const std::vector<std::vector<token_t>> & data,
         int K,
         int max_hist_length,
         HistogramCollection& histograms,
         int max_iter = 50, 
-        int seed = 42){
+        int seed = 42,
+        Sink sink = {}){
+
     bool histograms_provided = ! histograms.empty();
     HistogramPreselectPolicy<HistogramCollection> histPreselector(histograms, data);
     HistogramUpdatePolicy<HistogramCollection> histUpdater(histograms, data, histograms_provided);
+    DistancePolicy<HistogramCollection> distance(histograms);
+
     if (max_iter == 0)
         max_iter = 50;
-
+    
+    telemetry::emit(sink, [&]{
+        return AlgorithmStart{
+            data.size(),
+            size_t(K),
+            size_t(max_iter),
+            histograms_provided
+        };
+    });
     std::vector<label_t> labels_cur(data.size());
     std::vector<label_t> labels_prev(data.size());
-    // Build initial histograms
-    auto randomizer = ksets::hashing::HashPolicy<ksets::hashing::MurmurHash>(ksets::hashing::MurmurHash(seed));
-    
+    // Build initial histograms if not provided 
+    auto randomizer = ksets::hashing::MurmurHash(seed);
     if (! histograms_provided){
         for (size_t i = 0; i < data.size(); i++) {
             size_t cluster = randomizer(i) % K;
@@ -71,123 +205,103 @@ ClusterResult cluster_cpp(
         }
     }
 
-    double sdth_old = 0.0;
-    double sdth = std::numeric_limits<double>::max();
-    std::vector<double> sumd_prev(K,0);
-    std::vector<double> sumd(K,0);
-    std::vector<hist_count_t> hist_sums = histograms.totals();
-    /*for (size_t i = 0; i < hist_sums.size(); ++i) {
-        std::cout << "Cluster " << i << " total: " << hist_sums[i] << "\n";
-    }*/
-    
-    std::vector<hist_count_t> test_val(K,0);
-    std::vector<int> miss_val(K,0);
-    std::vector<int> test_sum_val(K,0);  
+    // Zero out data structurs
+    double sdth_old = 0.0; // Previous Iteration Sum of distances 
+    double sdth = std::numeric_limits<double>::max(); // Current Iteration Sum of distance (Termination Criterion)
+    std::vector<double> sumd_prev(K,0); // Per cluster sums of contained elements of last iteration
+    std::vector<double> sumd(K,0); // Current iteration distances 
+    std::vector<hist_count_t> hist_sums = histograms.totals(); // Sums of observed elements per cluster
     // monitoring the cluster sizes 
     std::vector<int> cluster_sizes(K, 0);
-    int j = 0;
+    size_t j = 0; // Main Iteration Counter
     
     // Storing most distant data to clusters
     std::vector<std::pair<size_t, double>> clusters_empty;
     std::vector<std::pair<double, size_t>> most_distant(K, {0.0, 0}); 
+    uint64_t total_hists_touched = 0;
+    uint64_t total_tokens = 0; 
+    size_t report_interval=5000; 
+    size_t next_report = report_interval;
     //Main Loop
     while ((std::abs(sdth_old - sdth) > 0.00001 ) && (j < max_iter)){
-        
         histUpdater.before_iteration(j);
         histPreselector.before_iteration(j);
+        distance.begin_iteration(j);
+
         sdth_old = sdth;
         labels_prev = labels_cur;
         sumd_prev = sumd;
         
         clusters_empty.clear();
-        std::fill(miss_val.begin(), miss_val.end(), 0);
-        std::fill(test_sum_val.begin(), test_sum_val.end(), 0);
         std::fill(cluster_sizes.begin(), cluster_sizes.end(), 0);
-        //4.1 Compute distances & labels
         std::fill(sumd.begin(), sumd.end(), 0);
         std::fill(most_distant.begin(), most_distant.end(), std::make_pair(0.0, 0));
-        
         sdth = 0; 
+        //4.1 Compute distances & labels
+        // Iterating over data rows vvv
         for (size_t i = 0; i < data.size(); i++) {
+            distance.begin_row(K);
             size_t best_cluster; 
             size_t curr_cluster = labels_cur[i];
             cluster_sizes[curr_cluster]++ ; // incrementing the cluster counter
+            size_t num_tokens = data[i].size();
             auto histRange = histPreselector.get_candidate_histograms(data[i]);
-            for (auto const& token : data[i]) {
-                    std::fill(test_val.begin(), test_val.end(), 0);
-                    histograms.get_all(token, test_val, histRange);
-                    std::transform(test_val.begin(), test_val.end(),
-                        miss_val.begin(),
-                        miss_val.begin(),
-                        [](int val, int miss) { return miss + (val == 0 ? 1 : 0); }); 
-                    std::transform(test_val.begin(), test_val.end(),
-                        test_sum_val.begin(),
-                        test_sum_val.begin(),
-                        [](int val, int sum_val) { return sum_val + val; });
-            } // Calculate all distances for data row
+            // Telemetry for savings using preselect strategy
+            total_hists_touched += uint64_t(histRange.size()) * uint64_t(num_tokens);
+            total_tokens += num_tokens;
+            if (--next_report == 0 || i+1 == data.size()) {
+                telemetry::emit(sink, [&]{
+                    return PreselectSavingsTelemetry{uint64_t(total_tokens), uint64_t(K), total_hists_touched};
+                });
+                total_hists_touched = uint64_t(0);
+                total_tokens = uint64_t(0);
+                next_report = report_interval;
+            }  // End of Telemetry Report for Preselect Strategy  
             
-            std::vector<double> jaccard_distances(hist_sums.begin(), hist_sums.end());
-            std::transform(miss_val.begin(), miss_val.end(),
-                        jaccard_distances.begin(),
-                        jaccard_distances.begin(),
-                        [](int miss, int hist_total) { return miss + hist_total; });
-            std::transform(test_sum_val.begin(), test_sum_val.end(),
-                        jaccard_distances.begin(),
-                        jaccard_distances.begin(),
-                        [](int tsum, double denom) { return 1 - (tsum / denom); });
-            #ifdef DEBUG_DESPERATION
-                std::cout << "JDISTS[" << i << "] = ";
-                for (auto dist: jaccard_distances)
-                    std::cout << std::dec << std::format("{0:0.6f}, ",dist);
-                std::cout << "\n";
-            #endif
-            /*std::cout << "ClusterFor[" << i << "] = " << labels_cur[i] << "\n";
-            for (size_t j = 0; j < K; j++ ){
-                std::cout << "SUM[ n(y)*d_1 ]: " << test_sum_val[j] 
-                          << " , SUM y(n): " << hist_sums[j] 
-                          << " , d_2: " << miss_val[j] <<  "\n";
-                std::cout << "Jaccard[" << j << "] = " << jaccard_distances[j] << "\n"; 
-            }*/
+            for (auto const& token : data[i]) { // accumulate distance measures used
+                    distance.accumulate_token(token, histRange);
+            } 
+            // return finalized distances 
+            auto const& dists = distance.finalize();
+            // Emit Trace Telemetry for distances computed 
+            telemetry::emit(sink, [&]{
+                    return DistanceMeasureTelemetry{j, i, dists};
+                });
+            
+            
             for (size_t c = 0; c < K; ++c) {
-                if (jaccard_distances[c] > most_distant[c].first) {
-                    most_distant[c] = { jaccard_distances[c], i };
+                if (dists[c] > most_distant[c].first) {
+                    most_distant[c] = { dists[c], i };
                 }
             }
-            best_cluster = std::distance(jaccard_distances.begin(),
-                                         std::min_element(jaccard_distances.begin(), jaccard_distances.end()));
-            #ifdef DEBUG_DESPERATION
-                std::cout << std::format("Best: {0} => {1:0.6f}\n", best_cluster, jaccard_distances[best_cluster] );
-            #endif
-            //std::cout << "Cluster " << curr_cluster << " -> " << best_cluster << ": Ddelta=" << jaccard_distances[curr_cluster] - jaccard_distances[best_cluster] << "\n";
+            best_cluster = std::distance(dists.begin(),
+                                         std::min_element(dists.begin(), dists.end()));
+            
+            
             auto selection = curr_cluster;
-            if ((j == 0) || ((jaccard_distances[curr_cluster] - jaccard_distances[best_cluster]) > 0.0 )){
+            telemetry::emit(sink, [&]{
+                    return LabelSelectTelemetry{j, i, curr_cluster, best_cluster, dists[curr_cluster], dists[best_cluster]};
+                });
+            if ((j == 0) || ((dists[curr_cluster] - dists[best_cluster]) > 0.0 )){
                 cluster_sizes[curr_cluster]--;  // decrement old cluster
                 cluster_sizes[best_cluster]++;
                 if (cluster_sizes[curr_cluster] == 0)
-                    clusters_empty.emplace_back(curr_cluster, jaccard_distances[curr_cluster]);
+                    clusters_empty.emplace_back(curr_cluster, dists[curr_cluster]);
                 histUpdater.register_move(i,curr_cluster, best_cluster);
                 selection = best_cluster;
             }
             labels_cur[i] = selection;
-            sumd[selection] += jaccard_distances[selection];
+            sumd[selection] += dists[selection];
             #ifdef DEBUG_DESPERATION
                 std::cout << std::format("SUMD[BEST] = {0:0.6f}\n", sumd[selection]);
             #endif
-            sdth += jaccard_distances[selection];    
+            sdth += dists[selection];    
             
             
-            std::fill(miss_val.begin(), miss_val.end(), 0);
-            std::fill(test_sum_val.begin(), test_sum_val.end(), 0);
+            //std::fill(miss_val.begin(), miss_val.end(), 0);
+            //std::fill(test_sum_val.begin(), test_sum_val.end(), 0);
             //test_val.clear();
         } // Iteration over Data rows
-        #ifdef DEBUG_DESPERATION
-            std::cout << std::format("SUMD = ");
-            for (auto ds: sumd)
-                std::cout << std::format("{0:0.6f}, ", ds);
-            std::cout << "\n";
-            std::cout << std::format("SDTH = {0:0.6f} , SDTH_OLD = {1:0.6f} \n",sdth, sdth_old);
-        #endif
-        
 
         //4.2 Stop if error increases
         if (sdth > sdth_old) {
@@ -217,43 +331,24 @@ ClusterResult cluster_cpp(
             for (size_t idx=0; idx < histograms.size(); ++idx)
                 histograms[idx].debug_print();
         #endif
+        
+        auto now = std::chrono::high_resolution_clock::now();
+        telemetry::emit(sink, [&]{
+            double delta = (j == 0)
+                ? std::numeric_limits<double>::quiet_NaN()
+                : std::abs(sdth_old - sdth);
+            return IterationMetrics{j, sdth, delta, now };
+        });
+
+
         ++j;
     }
-    std::vector<std::size_t> hist_lengths;
-    hist_lengths.reserve(histograms.size());
-    double avg_hist_len = 0;
-    size_t median_hist_len = 0;
-    size_t num_hists = histograms.size();
-    for (size_t idx=0; idx < num_hists; ++idx) {
-        avg_hist_len += histograms[idx].size();
-        hist_lengths.push_back(histograms[idx].size()); 
-    }
-    std::sort(hist_lengths.begin(), hist_lengths.end());
-    if (hist_lengths.size() % 2 == 0)
-    {
-      median_hist_len = (hist_lengths[num_hists / 2 - 1] + hist_lengths[num_hists / 2]) / 2;
-    }
-    else 
-    {
-      median_hist_len = hist_lengths[num_hists / 2];
-    }
+
+    telemetry::emit(sink, [&]{ 
+        return RunSummary{j,sdth, compute_hist_stats(histograms)};
+    });
     
-    avg_hist_len = avg_hist_len / num_hists; 
-    std::cout << "Total Iterations: " << j << "\n"
-              << "Avg Histogram Size: " << avg_hist_len << "\n"
-              << "Median Histogram Size: " << median_hist_len << "\n"
-              << "Sum of Total Distances: " << sdth << "\n"; 
-    size_t hist_quant = 1;
-    double hist_quant_perc = 0; 
-    for (const auto& chunk : hist_lengths | std::views::chunk(std::max(num_hists / 10, size_t{1}) )) {
-        auto chunk_avg = std::reduce(chunk.begin(), chunk.end()) / chunk.size();
-        double chunk_perc = chunk.size()/ double{num_hists};
-        std::cout << "AVG Histogram Size N-Tile " << hist_quant 
-                  << "(n=" << chunk.size() << ", " << hist_quant_perc << "-" << std::min(hist_quant_perc + chunk_perc, 1.0) * 100 
-                  << "%) = " << chunk_avg << "\n";
-        hist_quant_perc += chunk_perc;
-        hist_quant++;  
-    }
+    
     // 5. Results
 
 

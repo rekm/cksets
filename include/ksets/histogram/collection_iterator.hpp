@@ -48,6 +48,7 @@ namespace ksets::histogram {
 
         iterator begin() const { return iterator{H_, &indices, 0}; }
         iterator end()   const { return iterator{H_, &indices, indices.size()}; }
+        size_t size() const { return indices.size(); }
     };
 
 }
