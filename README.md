@@ -1,5 +1,26 @@
 # CKSets
 
+## Quickstart
+
+```
+    mamba env create -f build_env.yml
+    conda activate cksets_build
+    pip install .
+    py-cksets --help
+    py-ksets --help # Original Authors code trimmed down for comparison sake
+```
+
+## Build with Cmake
+
+```
+    mamba env create -f build_env.yml
+    conda activate cksets_build
+    cmake  -B build   -DCMAKE_CXX_COMPILER=$(which g++)
+    cd build 
+    make -j 5 
+    ./cksets --help
+```
+
 
 ## Integrate with your tools
 
