@@ -152,7 +152,7 @@ int main(int argc, char ** argv)
         // ---------------------------
         sharg::parser parser{"ksets", argc, argv, sharg::update_notifications::off};
         
-        parser.info.short_description = "Ksets clustering algorithm demonstartor";
+        parser.info.short_description = "Ksets clustering algorithm demonstrator";
         parser.info.version = "0.1.0";
         parser.add_option(data_file, sharg::config{.short_id = 'f', .long_id = "file", .description = "Input File" , .validator = sharg::input_file_validator{} });
         parser.add_option(number_of_clusters, sharg::config{
@@ -170,7 +170,7 @@ int main(int argc, char ** argv)
                 .short_id = 'r', .long_id = "rebuild",
                 .description="Rebuild strategy for histograms (*full, memorize) * is default", 
                 .validator = sharg::value_list_validator{"full", "memorize"}});
-        parser.add_option(max_iter, sharg::config{
+        parser.add_option(seed, sharg::config{
                 .short_id = 's', .long_id = "seed", 
                 .description = "Seed (optional, default=42)"});
         parser.add_flag(do_nothing, sharg::config{.short_id = 'n', .long_id = "do_nothing", .description = "Only runs file IO"});

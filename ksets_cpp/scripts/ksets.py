@@ -12,7 +12,8 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-
+# ChatGTP Version 5 was given my cpp sharg parser and asked to just transform
+# it into an python argparse version
 def get_args(args=None):
     parser = argparse.ArgumentParser(description="Clustering Algorithm")
 
@@ -40,6 +41,7 @@ def get_args(args=None):
         help="Maximum number of iterations (optional)"
     )
 
+    """
     # Pre-selection strategy
     parser.add_argument(
         '-p', '--preselect',
@@ -57,7 +59,7 @@ def get_args(args=None):
         default='full',
         help="Rebuild strategy for histograms ('full' or 'memorize'). Default is 'full'"
     )
-
+    """
     # Seed
     parser.add_argument(
         '-s', '--seed',
@@ -79,7 +81,7 @@ def main(CMD=None):
     args = get_args(CMD)
     MAX_HIST_LENGTH = 0
     data = cksets.read_file(args.file)
-    rand_seed = 33
+    rand_seed = args.seed
     np.random.seed(rand_seed)
     initial_hist = cksets.build_initial_histograms(data, args.clusters)
     start = time.perf_counter()
@@ -87,6 +89,7 @@ def main(CMD=None):
     end = time.perf_counter()
     elapsed = end - start
     eprint(f"Algorithm Total Runtime (seconds): {elapsed}")
+    print(*labels, sep="\n")
     #print("Histograms:")
     #print(khist)
     #print("Sum(sdh):", sum(sdh))

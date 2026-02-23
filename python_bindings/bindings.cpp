@@ -12,9 +12,55 @@
 #include <ksets/clustering/histogram_preselect_ibf.hpp>
 #include <ksets/token_encoder/reversible.hpp>
 #include <ksets/types.hpp>
+#include <ksets/telemetry.hpp>
 
 namespace py = pybind11;
 
+
+// This is bad but should be alright for now 
+// Needs to be properly adressed and itegrated into python 
+struct CerrSink {
+    // Maximum telemetry level this sink will handle
+    static constexpr ksets::telemetry::TelemetryLevel level =
+        ksets::telemetry::TelemetryLevel::basic;
+
+    template<class Event>
+    void handle(const Event& e) const {
+        print(e);
+    }
+
+private:
+
+    // Generic fallback (if no specific overload exists)
+    template<class Event>
+    void print(const Event& e) const {
+    }
+
+
+    void print(const ksets::AlgorithmStart& e ) const {
+        std::cerr << "[Algorithm Initialized]\n" 
+                  << "Histograms Provided: " << (e.histograms_provided ? "TRUE" : "FALSE") 
+                  << "\nData Size: " << e.n_items << "\n";
+    }
+
+    // IterationMetrics specialization
+    void print(const ksets::IterationMetrics& e) const {
+        
+        std::cerr << "[Iteration " << e.iter << "] "
+                  << "Objective: " << e.objective
+                  << ", Delta: " << e.delta;
+        std::cerr << "\n"; 
+    }
+
+    // RunSummary example
+    void print(const ksets::RunSummary& e) const {
+        std::cerr << "[ Final Summary ]\n";     
+        std::cerr << "Total Iterations: " << e.iterations << "\n"
+                << "Avg Histogram Size: " << e.hist.avg << "\n"
+                << "Median Histogram Size: " << e.hist.median << "\n"
+                << "Sum of Total Distances: " << e.sum_distances << "\n"; 
+    }
+};
 
 
 //Get String Object Matrix from python 
@@ -99,7 +145,8 @@ py::tuple cluster_binding(py::array input,
                           py::object histograms = py::none(),
                           int max_iter = 50,
                           std::string hist_rebuild = "memorize", 
-                          std::string preselect = "none")
+                          std::string preselect = "none",
+                          int seed = 12345)
 {
     // ---- Convert numpy to vector<vector<string>> ----
     // also reworked using chatgtp version 5 (Access 15.11.2025), I got seg faults because of 
@@ -113,11 +160,11 @@ py::tuple cluster_binding(py::array input,
     // ---- Call C++ algorithm ----
 
     //auto hash_policy = ksets::hashing::HashPolicy<ksets::hashing::MurmurHash>{12345}; // <- does not work because its explicit
-    auto hash_policy = ksets::hashing::HashPolicy<ksets::hashing::MurmurHash>(ksets::hashing::MurmurHash(12345));
+    auto hash_policy = ksets::hashing::HashPolicy<ksets::hashing::MurmurHash>(ksets::hashing::MurmurHash(seed));
     //auto alloc_policy = ksets::memory::PoolAllocator<std::pair<const std::string,int>>{}; <- crashes because the PoolAllocator has little human brain power supportiing it
     ksets::histogram::MapHistogramCollection<decltype(hash_policy)> hist_collection(K, hash_policy);//, alloc_policy);
     init_histograms_from_python(histograms, hist_collection, encoder);
-    
+    CerrSink cerr_sink{};
     ksets::ClusterResult r;
     if (hist_rebuild == "memorize") {
         if (preselect == "none") {
@@ -125,13 +172,13 @@ py::tuple cluster_binding(py::array input,
                 decltype(hist_collection), 
                 ksets::HistUpdaterMemorizeChanges,
                 ksets::HistPreselectNothing
-                >(rows, K, max_hist, hist_collection, max_iter); 
+                >(rows, K, max_hist, hist_collection, max_iter,seed, cerr_sink); 
         } else if (preselect == "ibf") {
             r = ksets::cluster_cpp<
                 decltype(hist_collection), 
                 ksets::HistUpdaterMemorizeChanges,
                 ksets::HistPreselectIBF
-                >(rows, K, max_hist, hist_collection, max_iter);
+                >(rows, K, max_hist, hist_collection, max_iter,seed, cerr_sink);
         }
     } else if (hist_rebuild == "full"){
         if (preselect == "none") {
@@ -139,13 +186,13 @@ py::tuple cluster_binding(py::array input,
                 decltype(hist_collection), 
                 ksets::HistUpdaterKsetsAuthors,
                 ksets::HistPreselectNothing
-                >(rows, K, max_hist, hist_collection, max_iter); 
+                >(rows, K, max_hist, hist_collection, max_iter,seed, cerr_sink); 
         } else if (preselect == "ibf") {
             r = ksets::cluster_cpp<
                 decltype(hist_collection), 
                 ksets::HistUpdaterKsetsAuthors,
                 ksets::HistPreselectIBF
-                >(rows, K, max_hist, hist_collection, max_iter);
+                >(rows, K, max_hist, hist_collection, max_iter,seed, cerr_sink);
         }
     } else {
         throw std::runtime_error("Unknown hist_rebuild option: " + hist_rebuild +
@@ -166,6 +213,7 @@ PYBIND11_MODULE(_ksets_cpp, m)
           py::arg("histograms") = py::none(),
           py::arg("max_iter") = 50,
           py::arg("hist_rebuild") = "memorize",
-          py::arg("preselect") = "none"
+          py::arg("preselect") = "none",
+          py::arg("seed") = 12345
         );
 }
