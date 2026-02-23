@@ -240,7 +240,7 @@ ClusterResult cluster_cpp(
         //4.1 Compute distances & labels
         // Iterating over data rows vvv
         for (size_t i = 0; i < data.size(); i++) {
-            distance.begin_row(K);
+            distance.begin_row();
             size_t best_cluster; 
             size_t curr_cluster = labels_cur[i];
             cluster_sizes[curr_cluster]++ ; // incrementing the cluster counter

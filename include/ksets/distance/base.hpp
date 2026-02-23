@@ -17,8 +17,8 @@ namespace ksets::distance {
             static_cast<Derived*>(this)->begin_iteration_impl(iter);
         }
 
-        void begin_row(size_t K) {
-            static_cast<Derived*>(this)->begin_row_impl(K);
+        void begin_row() {
+            static_cast<Derived*>(this)->begin_row_impl();
         }
 
         template <class Range>

@@ -37,7 +37,7 @@ void parse_data(
 struct CerrSink {
     // Maximum telemetry level this sink will handle
     static constexpr ksets::telemetry::TelemetryLevel level =
-        ksets::telemetry::TelemetryLevel::basic;
+        ksets::telemetry::TelemetryLevel::debug;
 
     template<class Event>
     void handle(const Event& e) const {

@@ -9,6 +9,11 @@ import numpy as np
 import ksets_cpp.data_utils as data_utility
 from scipy import spatial
 import math
+import sys
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
 
 # Constant
 LOG_ENABLE = False
@@ -183,6 +188,7 @@ def cluster(data, number_of_cluster, max_hist_length, histograms = None, max_ite
         histograms = _get_histogram(labels_cur, np_data, number_of_cluster, max_hist_length)
         #print(*[", ".join([f"{k} -> {v}" for k,v in histogram.items() ]) for histogram in histograms], sep="\n")
         j = j + 1
-        
+    eprint(f'Sum of Total Distances: {sdth}')
+    eprint(f'Total Iterations: {j}')    
     return (labels_cur, histograms, sumd)
 # API ends

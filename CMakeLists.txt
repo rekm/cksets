@@ -13,6 +13,9 @@ set(CPM_SOURCE_CACHE "${CMAKE_SOURCE_DIR}/external") # That is close to what I w
 set(Python3_EXECUTABLE "" CACHE FILEPATH "Path to Python interpreter")
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 
+# This allows including `*.cmake` files from the `cmake` directory without specifying the full path.
+list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+
 # ---------------------------------------
 # CPM Package Manager
 # ---------------------------------------
@@ -168,3 +171,16 @@ configure_package_config_file(
 )
 
 install(FILES ${CMAKE_BINARY_DIR}/KSetsConfig.cmake DESTINATION lib/cmake/ksets)
+
+
+# An option to disable configuring and building the tests. Tests are enabled if this is the main CMakeLists.txt.
+# It can be used when calling CMake: `cmake .. -Dapp-template_TEST=OFF`.
+# It is good practice to allow disabling tests. If another project includes your application,
+# it might not want to build your tests.
+option (${PROJECT_NAME}_TEST "Enable testing for ${PROJECT_NAME}." ${PROJECT_IS_TOP_LEVEL})
+
+if (${PROJECT_NAME}_TEST)
+    enable_testing () # Makes ctest work in root build directory.
+    # Add the tests. This will include `test/CMakeLists.txt`.
+    add_subdirectory (test EXCLUDE_FROM_ALL)
+endif ()

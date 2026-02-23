@@ -12,7 +12,7 @@ namespace ksets::distance {
         std::vector<hist_count_t> tsum_;
         std::vector<double> dists_;
         std::vector<hist_count_t> scratch_;
-        std::vector<hist_count_t> hist_sums_;    
+        std::vector<hist_count_t> hist_sums_;
         
         public:
             using Base::Base;
@@ -22,11 +22,11 @@ namespace ksets::distance {
                 hist_sums_ = H_.totals();
             }
 
-            void begin_row_impl(size_t K) {
-                miss_.assign(K, 0);
-                tsum_.assign(K, 0);
-                dists_.assign(K, 0.0);
-                scratch_.resize(K);
+            void begin_row_impl() {
+                miss_.assign(H_.size(), 0);
+                tsum_.assign(H_.size(), 0);
+                dists_.assign(H_.size(), 0.0);
+                scratch_.resize(H_.size());
             }
 
             template <typename Range>
