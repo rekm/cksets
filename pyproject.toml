@@ -1,7 +1,7 @@
 [build-system]
 requires = [
     "scikit-build-core>=0.8.0",
-    "pybind11",    # optional if you fetch via CPM, but harmless
+    "pybind11", 
 ]
 build-backend = "scikit_build_core.build"
 
@@ -16,6 +16,11 @@ dependencies = []
 [project.urls]
 Source = "https://git.imp.fu-berlin.de/rwk53376/cksets"
 Issues = "https://git.imp.fu-berlin.de/rwk53376/cksets/issues"
+
+[project.scripts]
+py-ksets = "ksets_cpp.scripts.ksets:main"
+py-cksets = "ksets_cpp.scripts.cksets:main"
+
 
 # ==============================
 # scikit-build configuration
