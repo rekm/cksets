@@ -38,6 +38,15 @@ namespace ksets::histogram {
             };
         }
 
+        template<std::ranges::forward_range R>
+        auto get_range(R&& indices) {
+            Derived* self = static_cast<Derived*>(this);
+            return CollectionRange<Derived>{
+                self,
+                std::vector<size_t>(indices.begin(), indices.end())
+            };
+        }
+
         // Query all histograms in the collection at once
         void get_all(const token_t& token, std::vector<hist_count_t>& out) const {
             if constexpr (requires(const Derived d) { d.query_all(token, out); }) {

@@ -9,6 +9,7 @@
 #include <ranges>
 #include <numeric>
 #include <vector>
+#include <algorithm>
 
 
 namespace ksets {
@@ -26,16 +27,17 @@ namespace ksets {
         using Base::Base;
         
         explicit HistPreselectIBF(HistogramCollection& hist,
-                            const std::vector<std::vector<token_t>>& data)
+                            const std::vector<std::vector<token_t>>& data, double fpr=0.01)
             : Base(hist, data),  
-            hists_(hist), data_(data), indices_(hist.size()), 
-            ibf_(make_ibf(hist, data, 3u))
+            hists_(hist), data_(data), indices_(hist.size()),
+            fpr_(fpr), 
+            ibf_(make_ibf(hist, data, 3u, fpr))
         {
             std::iota(indices_.begin(), indices_.end(), 0);
             all_bins_.reserve(ibf_.bin_count());
             for (size_t i = 0; i < ibf_.bin_count(); ++i)
                 all_bins_.push_back(seqan::hibf::bin_index{i});
-            cluster_agent_ = ibf_.containment_agent();
+            cluster_agent_ = ibf_.membership_agent();
         }
         void before_iteration_impl(size_t it_idx) {
             if(it_idx == 0){
@@ -47,29 +49,14 @@ namespace ksets {
         }
 
         Range get_candidate_histograms_impl(const std::vector<token_t>& data_row) {
-            seqan::hibf::bit_vector bit_results(hists_.size(), false);
-            std::vector<size_t> results;
-            results.reserve(hists_.size());
-            for (const auto& token: data_row){
-                auto const& res = cluster_agent_.bulk_contains(token);
-                bit_results |= res; 
-            }
-            if (bit_results.none()){
-                results.push_back(hists_.size()-1);
-            } else {
-                //seqan::hibf::print(bit_results);
-                // create index from bitvector
-                bit_vector_indices(bit_results, std::back_inserter(results));
-            }
-            
-            return hists_.get_range(std::move(results));
+            return hists_.get_range(cluster_agent_.membership_for(data_row, std::max( uint16_t{data_row.size() * fpr_},uint16_t{1})));
         }
 
 
         void update_impl(std::vector<label_t>& labels_cur) {
             ibf_.clear(all_bins_);
             before_iteration_impl(0);
-            cluster_agent_ = ibf_.containment_agent();
+            cluster_agent_ = ibf_.membership_agent();
         }
 
         void update_from_changes(std::vector<Change>& changes){
@@ -79,34 +66,25 @@ namespace ksets {
 
 
     private:
+        double fpr_ = 0.01;
         std::vector<seqan::hibf::bin_index> all_bins_;
         seqan::hibf::interleaved_bloom_filter ibf_;
-        seqan::hibf::interleaved_bloom_filter::containment_agent_type cluster_agent_;
+        seqan::hibf::interleaved_bloom_filter::membership_agent_type cluster_agent_;
         HistogramCollection& hists_;
         std::vector<size_t> indices_;
         const std::vector<std::vector<token_t>>& data_;
 
-        template <typename BitVector, typename OutputIt>
-        void bit_vector_indices(BitVector const & bv, OutputIt out){
-            size_t const nbits = bv.size();
-            for (size_t i = 0; i < nbits; ++i)
-            {
-                if (bv[i])
-                    *out++ = i;
-            }
-        }
-
         static auto make_ibf(
                 HistogramCollection& hists,
-                const std::vector<std::vector<token_t>>& data, size_t hash_fun_count=3){
+                const std::vector<std::vector<token_t>>& data, size_t hash_fun_count=3, double fpr=0.01){
         size_t avg_elements = 1;
         for (size_t idx=0; idx< hists.size(); idx++)
             avg_elements = std::max<size_t>(avg_elements, hists[idx].size());
 
         seqan::hibf::build::bin_size_parameters params{};
-        params.elements   = 200 * avg_elements;
+        params.elements   = 2 * avg_elements;
         params.hash_count = hash_fun_count;
-        params.fpr        = 0.02;
+        params.fpr        = fpr;
 
         return seqan::hibf::interleaved_bloom_filter{
             seqan::hibf::bin_count{hists.size()},
