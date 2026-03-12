@@ -25,11 +25,14 @@ int main() {
 
         auto codes = genicds::generate_patient(groups,rng);
 
-        out << '';//pid;
-
-        for (auto c : codes)
-            out << ' ' << c;
-
+        //out << '';//pid;
+        bool first = true; 
+        for (auto c : codes){
+            if (!first){
+                out << ' ';
+            }
+            out << c;
+        }
         out << '\n';
     }
 }

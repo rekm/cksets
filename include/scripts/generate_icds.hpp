@@ -46,7 +46,7 @@ namespace genicds {
     }
 
     const uint32_t TOTAL_CODES = 100000;
-    const double density = 0.03;
+    const double density = 0.01;
 
 
     struct ZipfSampler {
@@ -97,6 +97,7 @@ namespace genicds {
             for(size_t j=0;j<expected;j++) {
 
                 uint32_t c = hash(g.id,j) % TOTAL_CODES;
+                c = make_code(g.id, c);
 
                 if(u(rng) < 0.8)
                     codes.insert(c);
@@ -126,7 +127,7 @@ namespace genicds {
 
             for(size_t j=0;j<group_size;j++){
                 uint32_t c = zipf.sample(rng);
-
+                c = make_code(g.id, c);
                 // group-specific filter to create structure
                 if(hash(g.id, c) < g.thresh)
                     codes.insert(c);
