@@ -3,14 +3,17 @@
 #include <ksets/histogram/collection_base.hpp>
 #include <ksets/clustering/histogram_update_policy.hpp>
 #include <ksets/clustering/histogram_preselect_policy.hpp>
+#include <ksets/clustering/histogram_empty_policy.hpp>
+#include <ksets/clustering/histogram_empty_greedyfix.hpp>
+#include <ksets/clustering/histogram_empty_keep.hpp>
 #include <ksets/hashing/murmur_hash.hpp>
-#include <ksets/clustering/clustering.hpp>
 #include <ksets/distance/jaccard.hpp>
+
 #include <ksets/types.hpp>
 #include <ksets/telemetry.hpp>
 #include <string> 
 #include <format>
-#include <tuple>
+
 #include <numeric>
 #include <iostream>
 #include <algorithm>
@@ -165,6 +168,7 @@ template <class HistogramCollection,
           template<class> class HistogramUpdatePolicy,
           template<class> class HistogramPreselectPolicy,
           template<class> class DistancePolicy = distance::JaccardDistance,
+          class EmptyClusterPolicy = EmptyClusterKeep,
           telemetry::TelemetrySink Sink = telemetry::NullSink>
 ClusterResult cluster_cpp(
         const std::vector<std::vector<token_t>> & data,
@@ -179,6 +183,7 @@ ClusterResult cluster_cpp(
     HistogramPreselectPolicy<HistogramCollection> histPreselector(histograms, data);
     HistogramUpdatePolicy<HistogramCollection> histUpdater(histograms, data, histograms_provided);
     DistancePolicy<HistogramCollection> distance(histograms);
+ 
 
     if (max_iter == 0)
         max_iter = 50;
@@ -193,6 +198,8 @@ ClusterResult cluster_cpp(
     });
     std::vector<label_t> labels_cur(data.size());
     std::vector<label_t> labels_prev(data.size());
+
+    
     // Build initial histograms if not provided 
     auto randomizer = ksets::hashing::MurmurHash(seed);
     if (! histograms_provided){
@@ -204,6 +211,8 @@ ClusterResult cluster_cpp(
             }
         }
     }
+    
+    EmptyClusterPolicy emptyClusterFix(labels_cur, K);
 
     // Zero out data structurs
     double sdth_old = 0.0; // Previous Iteration Sum of distances 
@@ -211,13 +220,10 @@ ClusterResult cluster_cpp(
     std::vector<double> sumd_prev(K,0); // Per cluster sums of contained elements of last iteration
     std::vector<double> sumd(K,0); // Current iteration distances 
     std::vector<hist_count_t> hist_sums = histograms.totals(); // Sums of observed elements per cluster
-    // monitoring the cluster sizes 
-    std::vector<int> cluster_sizes(K, 0);
+    
     size_t j = 0; // Main Iteration Counter
     
-    // Storing most distant data to clusters
-    std::vector<std::pair<size_t, double>> clusters_empty;
-    std::vector<std::pair<double, size_t>> most_distant(K, {0.0, 0}); 
+     
     uint64_t total_hists_touched = 0;
     uint64_t total_tokens = 0; 
     size_t report_interval=5000; 
@@ -227,15 +233,13 @@ ClusterResult cluster_cpp(
         histUpdater.before_iteration(j);
         histPreselector.before_iteration(j);
         distance.begin_iteration(j);
-
+        emptyClusterFix.begin_iteration(j);
         sdth_old = sdth;
         labels_prev = labels_cur;
         sumd_prev = sumd;
-        
-        clusters_empty.clear();
-        std::fill(cluster_sizes.begin(), cluster_sizes.end(), 0);
+        //Rest Distance Sums per cluster
         std::fill(sumd.begin(), sumd.end(), 0);
-        std::fill(most_distant.begin(), most_distant.end(), std::make_pair(0.0, 0));
+        // and total sum
         sdth = 0; 
         //4.1 Compute distances & labels
         // Iterating over data rows vvv
@@ -243,10 +247,10 @@ ClusterResult cluster_cpp(
             distance.begin_row();
             size_t best_cluster; 
             size_t curr_cluster = labels_cur[i];
-            cluster_sizes[curr_cluster]++ ; // incrementing the cluster counter
             size_t num_tokens = data[i].size();
             auto histRange = histPreselector.get_candidate_histograms(data[i]);
             // Telemetry for savings using preselect strategy
+            /*
             total_hists_touched += uint64_t(histRange.size()) * uint64_t(num_tokens);
             total_tokens += num_tokens;
             if (--next_report == 0 || i+1 == data.size()) {
@@ -257,7 +261,7 @@ ClusterResult cluster_cpp(
                 total_tokens = uint64_t(0);
                 next_report = report_interval;
             }  // End of Telemetry Report for Preselect Strategy  
-            
+            */
             for (auto const& token : data[i]) { // accumulate distance measures used
                     distance.accumulate_token(token, histRange);
             } 
@@ -267,13 +271,9 @@ ClusterResult cluster_cpp(
             telemetry::emit(sink, [&]{
                     return DistanceMeasureTelemetry{j, i, dists};
                 });
+            //emptyClusterFix.register_distances(i, dists);
             
             
-            for (size_t c = 0; c < K; ++c) {
-                if (dists[c] > most_distant[c].first) {
-                    most_distant[c] = { dists[c], i };
-                }
-            }
             best_cluster = std::distance(dists.begin(),
                                          std::min_element(dists.begin(), dists.end()));
             
@@ -283,24 +283,14 @@ ClusterResult cluster_cpp(
                     return LabelSelectTelemetry{j, i, curr_cluster, best_cluster, dists[curr_cluster], dists[best_cluster]};
                 });
             if ((j == 0) || ((dists[curr_cluster] - dists[best_cluster]) > 0.0 )){
-                cluster_sizes[curr_cluster]--;  // decrement old cluster
-                cluster_sizes[best_cluster]++;
-                if (cluster_sizes[curr_cluster] == 0)
-                    clusters_empty.emplace_back(curr_cluster, dists[curr_cluster]);
                 histUpdater.register_move(i,curr_cluster, best_cluster);
                 selection = best_cluster;
             }
+            emptyClusterFix.register_move(i, curr_cluster, selection, dists[selection]);
             labels_cur[i] = selection;
             sumd[selection] += dists[selection];
-            #ifdef DEBUG_DESPERATION
-                std::cout << std::format("SUMD[BEST] = {0:0.6f}\n", sumd[selection]);
-            #endif
             sdth += dists[selection];    
             
-            
-            //std::fill(miss_val.begin(), miss_val.end(), 0);
-            //std::fill(test_sum_val.begin(), test_sum_val.end(), 0);
-            //test_val.clear();
         } // Iteration over Data rows
 
         //4.2 Stop if error increases
@@ -316,6 +306,7 @@ ClusterResult cluster_cpp(
             histograms.zero_out();
         } 
         //4.3. Recompute histograms by applying histogram changes using data rows
+        emptyClusterFix.execute_fix(labels_cur);
         histUpdater.commit(labels_cur);
         histPreselector.update(labels_cur);
         /*for (size_t i = 0; i < histograms.size(); i++){
@@ -327,10 +318,6 @@ ClusterResult cluster_cpp(
         
         hist_sums = histograms.totals();
         //4.4 increment counter
-        #ifdef DEBUG_BASE
-            for (size_t idx=0; idx < histograms.size(); ++idx)
-                histograms[idx].debug_print();
-        #endif
         
         auto now = std::chrono::high_resolution_clock::now();
         telemetry::emit(sink, [&]{
