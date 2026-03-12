@@ -10,6 +10,7 @@
 #include <numeric>
 #include <vector>
 #include <algorithm>
+#include <cmath> 
 
 
 namespace ksets {
@@ -23,7 +24,6 @@ namespace ksets {
     public:
         using Base = HistogramPreselectPolicy<HistPreselectIBF<HistogramCollection>,
                             HistogramCollection>;
-        using Range = histogram::CollectionRange<HistogramCollection>;
         using Base::Base;
         
         explicit HistPreselectIBF(HistogramCollection& hist,
@@ -48,8 +48,15 @@ namespace ksets {
             }
         }
 
-        Range get_candidate_histograms_impl(const std::vector<token_t>& data_row) {
-            return hists_.get_range(cluster_agent_.membership_for(data_row, std::max( uint16_t{data_row.size() * fpr_},uint16_t{1})));
+        auto get_candidate_histograms_impl(const std::vector<token_t>& data_row) {
+            uint16_t threshold =
+                static_cast<uint16_t>(data_row.size() * fpr_ + 0.999999);
+            if (threshold == 0)
+                threshold = 1;
+
+            //return hists_.get_range(cluster_agent_.membership_for(data_row, threshold));
+            indices_ = cluster_agent_.membership_for(data_row, threshold);
+            return hists_.get_range(indices_);
         }
 
 
@@ -66,23 +73,34 @@ namespace ksets {
 
 
     private:
+        HistogramCollection& hists_;
+        const std::vector<std::vector<token_t>>& data_;
+        std::vector<size_t> indices_;
         double fpr_ = 0.01;
         std::vector<seqan::hibf::bin_index> all_bins_;
         seqan::hibf::interleaved_bloom_filter ibf_;
         seqan::hibf::interleaved_bloom_filter::membership_agent_type cluster_agent_;
-        HistogramCollection& hists_;
-        std::vector<size_t> indices_;
-        const std::vector<std::vector<token_t>>& data_;
+        
+        
 
         static auto make_ibf(
                 HistogramCollection& hists,
                 const std::vector<std::vector<token_t>>& data, size_t hash_fun_count=3, double fpr=0.01){
-        size_t avg_elements = 1;
-        for (size_t idx=0; idx< hists.size(); idx++)
-            avg_elements = std::max<size_t>(avg_elements, hists[idx].size());
+        size_t max_elements = 1;
+        long double avg_elements = 0.0;
+        
+        for (size_t idx=0; idx< hists.size(); idx++) {
+            max_elements = std::max<size_t>(max_elements, hists[idx].size());
+            avg_elements +=  static_cast<long double>(hists[idx].size());
+        }
+        if (hists.size() < 1U)
+            throw std::invalid_argument("Cannot build IBF from empty histogram collection");
+        avg_elements = avg_elements / static_cast<long double>(hists.size());
+
+        size_t max_expected = std::ceil(avg_elements * (std::log(static_cast<long double>(hists.size())) + 0.5772156649015328606L)); // Euler-Mascheroni Constant
 
         seqan::hibf::build::bin_size_parameters params{};
-        params.elements   = 2 * avg_elements;
+        params.elements   = 2 * std::max(max_expected, max_elements);
         params.hash_count = hash_fun_count;
         params.fpr        = fpr;
 

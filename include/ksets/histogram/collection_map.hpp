@@ -78,8 +78,8 @@ public:
     void get_all(const token_t& token, std::vector<MapVal>& out) const {
         for (auto const& h : histograms_) out.push_back(h.get(token));
     }
-
-    void get_all(const token_t& token, std::vector<MapVal>& out, CollectionRange<MapHistogramCollection> range) const {
+    template <class IndexContainer>
+    void get_all(const token_t& token, std::vector<MapVal>& out, CollectionRange<MapHistogramCollection, IndexContainer> range) const {
         for (const auto cluster_idx : range) 
             out[cluster_idx] = get(cluster_idx, token);
     }

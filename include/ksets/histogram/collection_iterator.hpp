@@ -3,10 +3,10 @@
 
 namespace ksets::histogram {
     
-    template <class HistogramCollection>
+    template <class HistogramCollection, typename IndexContainer>
     class CollectionIterator {
     public:
-        using index_list_t = std::vector<size_t>;
+        using index_list_t = IndexContainer;
         // ChatGTP deconvoluted the access to the underlying histogram type
         using histogram_ref = decltype(std::declval<HistogramCollection*>()[0]);
         using histogram_type = std::remove_reference_t<histogram_ref>;
@@ -38,10 +38,10 @@ namespace ksets::histogram {
         size_t pos_;
     };
 
-    template <class HistogramCollection>
+    template <class HistogramCollection, typename IndexContainer>
     struct CollectionRange {
-        using index_list_t = std::vector<size_t>;
-        using iterator = CollectionIterator<HistogramCollection>;
+        using index_list_t = IndexContainer;
+        using iterator = CollectionIterator<HistogramCollection, IndexContainer>;
         
         HistogramCollection* H_;
         index_list_t indices;
