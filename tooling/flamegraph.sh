@@ -16,7 +16,7 @@ SOURCE_DIR="$(get_script_dir)"
 
 main() {
     local name=$1
-    perf record -F 999 -g -o "$name.data" -- timeout 120s ${@:2}
+    perf record -F 999 -g -o "$name.data" -- timeout 120s ${@:2} || true
     echo "Processing $name ..."
     perf script -i "$name.data" > "$name.perf"
     "${SOURCE_DIR}/stackcollapse-perf.pl" "$name.perf" > "$name.folded"
