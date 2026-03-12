@@ -2,6 +2,8 @@
 #include <ksets/types.hpp>
 #include <ksets/histogram/base.hpp>
 #include <ksets/histogram/collection_iterator.hpp>
+#include <span>
+#include <iostream>
 
 namespace ksets::histogram {
 
@@ -31,21 +33,25 @@ namespace ksets::histogram {
         }
 
         auto get_range(const std::vector<size_t>&& indices) {
+            //std::cout << "Old Range fired\n";
             Derived* self = static_cast<Derived*>(this);
-            return CollectionRange<Derived>{
+            return CollectionRange<Derived, std::vector<size_t>>{
                 self,
                 std::move(indices)
             };
         }
 
+
         template<std::ranges::forward_range R>
-        auto get_range(R&& indices) {
-            Derived* self = static_cast<Derived*>(this);
-            return CollectionRange<Derived>{
-                self,
-                std::vector<size_t>(indices.begin(), indices.end())
-            };
-        }
+        auto get_range(const R& indices) 
+            -> CollectionRange<Derived, std::span<const typename R::value_type>> {
+        //std::cout << "New Range fired\n";
+        Derived* self = static_cast<Derived*>(this);
+        return CollectionRange<Derived, std::span<const typename R::value_type>>{
+            self,
+            std::span<const typename R::value_type>(indices)
+        };
+}
 
         // Query all histograms in the collection at once
         void get_all(const token_t& token, std::vector<hist_count_t>& out) const {
