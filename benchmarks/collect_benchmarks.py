@@ -2,7 +2,10 @@
 import re
 import argparse
 import pathlib
+import locale 
 from datetime import datetime
+
+locale.setlocale(locale.LC_TIME, "de_DE.UTF-8")
 
 LOCAL_FOLDER = pathlib.Path(__file__).parent
 
@@ -14,7 +17,7 @@ def parse_args(cmds):
 
 
 def parse_file(args, _f: pathlib.Path):
-    _id          = _f.stem
+    _id = _f.stem
     (
         start_time,   
         dataset_type, 
