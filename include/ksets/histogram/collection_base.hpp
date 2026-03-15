@@ -32,24 +32,24 @@ namespace ksets::histogram {
             return derived().get(token);
         }
 
-        auto get_range(const std::vector<size_t>&& indices) {
+        /*auto get_range(const std::vector<size_t>&& indices) {
             //std::cout << "Old Range fired\n";
             Derived* self = static_cast<Derived*>(this);
             return CollectionRange<Derived, std::vector<size_t>>{
                 self,
                 std::move(indices)
             };
-        }
+        }*/
 
 
         template<std::ranges::forward_range R>
         auto get_range(const R& indices) 
             -> CollectionRange<Derived, std::span<const typename R::value_type>> {
-        //std::cout << "New Range fired\n";
-        Derived* self = static_cast<Derived*>(this);
-        return CollectionRange<Derived, std::span<const typename R::value_type>>{
-            self,
-            std::span<const typename R::value_type>(indices)
+            //std::cout << "New Range fired\n";
+            Derived* self = static_cast<Derived*>(this);
+            return CollectionRange<Derived, std::span<const typename R::value_type>>{
+                self,
+                std::span<const typename R::value_type>(indices)
         };
 }
 
