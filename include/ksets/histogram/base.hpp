@@ -19,6 +19,10 @@ public:
         return static_cast<const Derived*>(this)->total();
     }
 
+    void reserve(size_t s){
+        derived().reserve_impl(s); 
+    } 
+    
     int operator[](token_t const& token) const {
         return derived().get(token);
     }
