@@ -237,7 +237,7 @@ ClusterResult cluster_cpp(
         sdth_old = sdth;
         labels_prev = labels_cur;
         sumd_prev = sumd;
-        //Rest Distance Sums per cluster
+        //Reset Distance Sums per cluster
         std::fill(sumd.begin(), sumd.end(), 0);
         // and total sum
         sdth = 0; 
@@ -250,7 +250,7 @@ ClusterResult cluster_cpp(
             size_t num_tokens = data[i].size();
             auto histRange = histPreselector.get_candidate_histograms(data[i]);
             // Telemetry for savings using preselect strategy
-            /*
+            
             total_hists_touched += uint64_t(histRange.size()) * uint64_t(num_tokens);
             total_tokens += num_tokens;
             if (--next_report == 0 || i+1 == data.size()) {
@@ -261,7 +261,7 @@ ClusterResult cluster_cpp(
                 total_tokens = uint64_t(0);
                 next_report = report_interval;
             }  // End of Telemetry Report for Preselect Strategy  
-            */
+            
             for (auto const& token : data[i]) { // accumulate distance measures used
                     distance.accumulate_token(token, histRange);
             } 
@@ -299,7 +299,6 @@ ClusterResult cluster_cpp(
             sumd = sumd_prev;
             //reverse histogram changes
             histUpdater.rollback(labels_cur);
-            //histograms = hist_prev; is ksets equivalent
             break;
         }
         if (j==0 && histograms_provided){
@@ -309,13 +308,6 @@ ClusterResult cluster_cpp(
         emptyClusterFix.execute_fix(labels_cur);
         histUpdater.commit(labels_cur);
         histPreselector.update(labels_cur);
-        /*for (size_t i = 0; i < histograms.size(); i++){
-            std::cout << "Cluster Histogram:" << i << "\n";
-            histograms[i].debug_print();
-        }*/
-        
-        
-        
         hist_sums = histograms.totals();
         //4.4 increment counter
         
