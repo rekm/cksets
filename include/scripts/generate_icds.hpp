@@ -45,7 +45,7 @@ namespace genicds {
         return fmix64(a ^ (uint64_t(b)<<32));
     }
 
-    const uint32_t TOTAL_CODES = 100000;
+    const uint32_t TOTAL_CODES = 200000;
     const double density = 0.01;
 
 
@@ -83,23 +83,26 @@ namespace genicds {
         std::uniform_int_distribution<int> ng(1,3);
         std::uniform_real_distribution<double> u(0,1);
 
+        const Group& primary = groups[rng() % groups.size()];
         int k = ng(rng);
 
         std::unordered_set<uint32_t> codes;
         codes.reserve(4000);
 
-        size_t expected = TOTAL_CODES * density;
-
+                      
         for(int i=0;i<k;i++) {
 
-            const Group& g = groups[rng()%groups.size()];
-
+            const Group& g = (i == 0) ? primary : groups[rng() % groups.size()];
+            size_t expected = TOTAL_CODES * density;
+            if(g.id != primary.id)
+                expected /= 4;  
             for(size_t j=0;j<expected;j++) {
 
-                uint32_t c = hash(g.id,j) % TOTAL_CODES;
+                uint32_t c = hash(g.id,j) % (TOTAL_CODES / 16);
+                double keep = (g.id == primary.id) ? 0.8 : 0.25;
                 c = make_code(g.id, c);
-
-                if(u(rng) < 0.8)
+                c = extract_local(c);
+                if(u(rng) < keep)
                     codes.insert(c);
             }
         }

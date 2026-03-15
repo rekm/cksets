@@ -3,8 +3,8 @@
 
 int main() {
 
-    constexpr int NUM_GROUPS = 500;
-    constexpr int NUM_PATIENTS = 38451;
+    constexpr int NUM_GROUPS = 128;
+    constexpr int NUM_PATIENTS = 4000;
     constexpr double DENSITY = 0.015;
 
     std::mt19937_64 rng(123);
@@ -18,7 +18,7 @@ int main() {
         });
     }
 
-    std::ofstream out("icd_38451_500_large_sets.txt");
+    std::ofstream out("icd_4000_128_large_sets.txt");
     out.rdbuf()->pubsetbuf(nullptr, 1<<20); // 1MB buffer
 
     for (uint64_t pid = 0; pid < NUM_PATIENTS; ++pid) {
@@ -32,6 +32,7 @@ int main() {
                 out << ' ';
             }
             out << c;
+            first = false;
         }
         out << '\n';
     }
