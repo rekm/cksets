@@ -21,12 +21,12 @@ class MapHistogram :
         std::equal_to<token_t>,
         AllocatorPolicy
     >;
-
+    HashPolicy hash_;
     MapType freq;
 
 public:
     MapHistogram(HashPolicy hash, AllocatorPolicy alloc = {})
-        : freq(0, hash, std::equal_to<token_t>(), alloc)
+        : freq(0, hash, std::equal_to<token_t>(), alloc), hash_(hash)
     {}
 
     
@@ -65,12 +65,17 @@ public:
         return ret;
     }
 
-    int get(const token_t& token) const {
+    hist_count_t get_with_hash(const token_t& token, size_t h) const {
+        auto it = freq.find(token, h);
+        return it != freq.end() ? it->second : 0;
+    }
+
+    hist_count_t get(const token_t& token) const {
         auto it = freq.find(token);
         return it != freq.end() ? it->second : 0;
     }
 
-    void set(const token_t& token, int value) {
+    void set(const token_t& token, hist_count_t value) {
         freq[token] = value;
     }
 
@@ -83,6 +88,10 @@ public:
 
     size_t size() const {
         return freq.size();
+    }
+
+    void reserve_impl(size_t s){
+        freq.reserve(s);
     }
 
     int total() const {

@@ -23,12 +23,12 @@ class MapRobinHistogram :
         std::equal_to<token_t>,
         AllocatorPolicy
     >;
-
+    HashPolicy hash_;
     MapType freq;
 
 public:
     MapRobinHistogram(HashPolicy hash, AllocatorPolicy alloc = {})
-        : freq(0, hash, std::equal_to<token_t>(), alloc)
+        : freq(0, hash, std::equal_to<token_t>(), alloc) , hash_(hash)
     {}
 
     bool increment(const token_t& token) {
@@ -75,8 +75,17 @@ public:
         return it != freq.end() ? it->second : 0;
     }
 
+    hist_count_t get_with_hash(const token_t& token, size_t h) const {
+        auto it = freq.find(token, h);
+        return it != freq.end() ? it->second : 0;
+    }
+
     void set(const token_t& token, hist_count_t value) {
         freq[token] = value;
+    }
+
+    void reserve_impl(size_t s){
+        freq.reserve(s);
     }
 
     void debug_print() const {
