@@ -27,7 +27,7 @@ namespace ksets {
         using Base::Base;
         
         explicit HistPreselectIBF(HistogramCollection& hist,
-                            const std::vector<std::vector<token_t>>& data, double fpr=0.01)
+                            const std::vector<std::vector<token_t>>& data, double fpr=0.005)
             : Base(hist, data),  
             hists_(hist), data_(data), indices_(hist.size()),
             fpr_(fpr), 
@@ -55,7 +55,9 @@ namespace ksets {
                 threshold = 1;
 
             //return hists_.get_range(cluster_agent_.membership_for(data_row, threshold));
-            indices_ = cluster_agent_.membership_for(data_row, threshold);
+            auto const& res = cluster_agent_.membership_for(data_row, threshold);
+            indices_.assign(res.begin(), res.end());
+            //indices_ = cluster_agent_.membership_for(data_row, threshold);
             return hists_.get_range(indices_);
         }
 
@@ -100,7 +102,7 @@ namespace ksets {
         size_t max_expected = std::ceil(avg_elements * (std::log(static_cast<long double>(hists.size())) + 0.5772156649015328606L)); // Euler-Mascheroni Constant
 
         seqan::hibf::build::bin_size_parameters params{};
-        params.elements   = 2 * std::max(max_expected, max_elements);
+        params.elements   = 4 * std::max(max_expected, max_elements);
         params.hash_count = hash_fun_count;
         params.fpr        = fpr;
 
