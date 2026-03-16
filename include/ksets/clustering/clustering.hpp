@@ -245,8 +245,8 @@ ClusterResult cluster_cpp(
         // Iterating over data rows vvv
         for (size_t i = 0; i < data.size(); i++) {
             distance.begin_row();
-            size_t best_cluster; 
-            size_t curr_cluster = labels_cur[i];
+            label_t best_cluster; 
+            label_t curr_cluster = labels_cur[i];
             size_t num_tokens = data[i].size();
             auto histRange = histPreselector.get_candidate_histograms(data[i]);
             // Telemetry for savings using preselect strategy

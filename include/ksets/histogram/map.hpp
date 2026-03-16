@@ -102,8 +102,8 @@ public:
         return sum;
     }
 
-    std::vector<size_t> values(int max_hist_length = std::numeric_limits<int>::max()) const {
-        std::vector<label_t> out;
+    std::vector<hist_count_t> values(int max_hist_length = std::numeric_limits<int>::max()) const {
+        std::vector<hist_count_t> out;
         out.reserve(std::min<size_t>(freq.size(), max_hist_length));
 
         size_t count = 0;
