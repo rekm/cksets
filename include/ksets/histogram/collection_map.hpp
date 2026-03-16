@@ -24,7 +24,7 @@ class MapHistogramCollection
 public:
     
     explicit MapHistogramCollection(size_t K, HashPolicy hash = {}, AllocatorPolicy alloc = {})
-        : histograms_(K, MapHistType(hash, alloc)), K_(K), alloc_(alloc) {}
+        : histograms_(K, MapHistType(hash, alloc)), K_(K), alloc_(alloc), hash_(hash) {}
 
     MapHistType& operator[](size_t i) { return histograms_[i]; }
     const MapHistType& operator[](size_t i) const { return histograms_[i]; }
@@ -78,10 +78,11 @@ public:
     void get_all(const token_t& token, std::vector<MapVal>& out) const {
         for (auto const& h : histograms_) out.push_back(h.get(token));
     }
-    template <class IndexContainer>
-    void get_all(const token_t& token, std::vector<MapVal>& out, CollectionRange<MapHistogramCollection, IndexContainer> range) const {
+    template <class Alloc, class IndexContainer>
+    void get_all(const token_t& token, std::vector<MapVal, Alloc>& out, CollectionRange<MapHistogramCollection, IndexContainer> range) const {
+        size_t h  = hash_.hash(token);
         for (const auto cluster_idx : range) 
-            out[cluster_idx] = get(cluster_idx, token);
+            out[cluster_idx] = histograms_[cluster_idx].get_with_hash(token, h);
     }
 
     size_t size() const { return histograms_.size(); }
