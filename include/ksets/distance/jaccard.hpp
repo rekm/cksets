@@ -1,18 +1,20 @@
 #pragma once 
 
 #include <ksets/distance/base.hpp>
+#include <ksets/memory/aligned_allocator.hpp>
 
 namespace ksets::distance {
     template<class HistogramCollection>
     class JaccardDistance
         : public DistancePolicy<JaccardDistance<HistogramCollection>, HistogramCollection>{
         using Base = DistancePolicy<JaccardDistance, HistogramCollection>;
+        using count_t = uint32_t;
 
-        std::vector<int> miss_;
-        std::vector<hist_count_t> tsum_;
+        std::vector<count_t, ksets::memory::AlignedAllocator<count_t, 32>> miss_;
+        std::vector<count_t, ksets::memory::AlignedAllocator<count_t, 32>> tsum_;
         std::vector<double> dists_;
-        std::vector<hist_count_t> scratch_;
-        std::vector<hist_count_t> hist_sums_;
+        std::vector<count_t, ksets::memory::AlignedAllocator<count_t, 32>> scratch_;
+        std::vector<count_t> hist_sums_;
         
         public:
             using Base::Base;
