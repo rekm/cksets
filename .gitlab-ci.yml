@@ -20,7 +20,7 @@ cache:
 before_script:
   - micromamba create --yes python=$BASE_PYTHON -f build_env.yml -n ${BUILD_ENVNAME}
   - eval "$(micromamba shell hook --shell=bash)"
-  - install -y -n ${BUILD_ENVNAME} -c conda-forge git
+  - micromamba install -y -n ${BUILD_ENVNAME} -c conda-forge git
   - micromamba activate ${BUILD_ENVNAME}
 
 
