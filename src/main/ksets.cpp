@@ -37,7 +37,7 @@ void parse_data(
 struct CerrSink {
     // Maximum telemetry level this sink will handle
     static constexpr ksets::telemetry::TelemetryLevel level =
-        ksets::telemetry::TelemetryLevel::basic;
+        ksets::telemetry::TelemetryLevel::debug;
 
     template<class Event>
     void handle(const Event& e) const {
@@ -145,6 +145,7 @@ int main(int argc, char ** argv)
     int max_iter{50};          // default value
     int seed{12345};
     bool do_nothing{false};
+    std::filesystem::path rep_file{};
     try
     {
         // ---------------------------
@@ -173,6 +174,8 @@ int main(int argc, char ** argv)
         parser.add_option(seed, sharg::config{
                 .short_id = 's', .long_id = "seed", 
                 .description = "Seed (optional, default=42)"});
+        parser.add_option(rep_file, sharg::config{.short_id = 'R', .long_id = "rep_centroids", 
+                .description = "List of representative cluster members used to initialize histograms"});
         parser.add_flag(do_nothing, sharg::config{.short_id = 'n', .long_id = "do_nothing", .description = "Only runs file IO"});
         parser.parse();
 
@@ -201,6 +204,7 @@ int main(int argc, char ** argv)
     auto start = clock::now();
     parse_data(reader, data, encoder);
     auto stop = clock::now();
+
     double elapsed = std::chrono::duration<double>(stop - start).count();
     std::cerr << " ------ Data -------\nData Rows: " << data.size() << "\n" 
               << "Initial Data Processing (seconds): " << elapsed  << "\n";
@@ -221,6 +225,18 @@ int main(int argc, char ** argv)
     ksets::histogram::MapHistogramCollection<decltype(hash_policy)> hist_collection(number_of_clusters, hash_policy);
     std::cerr << "Preselect Strategy: " << preselect << "\n";
     std::cerr << "Histogram Construction: " << hist_rebuild << "\n";
+    if ( ! rep_file.empty() ){
+        std::cerr << "Histogram is being initialized with provided File: " << rep_file.string() << "\n";
+        std::vector<std::vector<ksets::token_t>> rep_data;
+        csv::CSVReader rep_reader(rep_file.string(), format);
+        parse_data(rep_reader, rep_data, encoder);
+        for (size_t i = 0; i < rep_data.size(); i++) {
+            size_t cluster = i % number_of_clusters;
+            for (auto const& token : rep_data[i]) {
+                hist_collection.increment(cluster, token);
+            }
+        }
+    }
     ksets::ClusterResult r;
     start = clock::now();
     if (hist_rebuild == "memorize") {
