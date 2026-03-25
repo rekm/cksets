@@ -1,6 +1,5 @@
 image: mambaorg/micromamba
 
-
 stages:
   - build
   - test
