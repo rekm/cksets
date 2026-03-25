@@ -45,27 +45,32 @@ namespace ksets {
                     for (const auto& key :hists_[i].keys())
                         ibf_.emplace(key, seqan::hibf::bin_index{i});
                 }
+                cluster_agent_ = ibf_.membership_agent();
             }
         }
 
         auto get_candidate_histograms_impl(const std::vector<token_t>& data_row) {
-            uint16_t threshold =
-                static_cast<uint16_t>(data_row.size() * fpr_ + 0.999999);
-            if (threshold == 0)
-                threshold = 1;
+            //uint16_t threshold =
+            //    static_cast<uint16_t>(data_row.size() * fpr_ + 0.999999);
+            uint16_t threshold =  static_cast<uint16_t>(0.9999 + std::sqrt(data_row.size()) * 1.2);
+            if (threshold < 2)
+                threshold = 2;
 
             //return hists_.get_range(cluster_agent_.membership_for(data_row, threshold));
             auto const& res = cluster_agent_.membership_for(data_row, threshold);
+            //indices_.clear();
+            //indices_.insert(indices_.end(), res.begin(), res.end());
             indices_.assign(res.begin(), res.end());
             //indices_ = cluster_agent_.membership_for(data_row, threshold);
             return hists_.get_range(indices_);
+            //return hists_.get_range(res);
         }
 
 
         void update_impl(std::vector<label_t>& labels_cur) {
             ibf_.clear(all_bins_);
             before_iteration_impl(0);
-            cluster_agent_ = ibf_.membership_agent();
+            
         }
 
         void update_from_changes(std::vector<Change>& changes){
