@@ -1,0 +1,73 @@
+image: mambaorg/micromamba
+
+
+stages:
+  - build
+  - test
+
+# Change pip's cache directory to be inside the project directory since we can
+# only cache local items.
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  BASE_PYTHON: "3.10"
+  BASE_ENVNAME: "base"
+  BUILD_ENVNAME: "build_env"
+
+
+# https://pip.pypa.io/en/stable/topics/caching/
+cache:
+  paths:
+    - .cache/pip
+before_script:
+  - micromamba create --yes python=$BASE_PYTHON -f build_env.yml -n ${BUILD_ENVNAME}
+  - eval "$(micromamba shell hook --shell=bash)"
+  - micromamba activate ${BUILD_ENVNAME}
+
+
+py_build:
+  stage:
+    build
+  script:
+    - pip install .
+    # run the command here
+  artifacts:
+    paths:
+      - build/*
+  rules:
+    - changes:
+      - "*.md"
+      when: never
+    - when: always
+
+cpp_build:
+  stage:
+    build
+  script:
+    - cmake  -B c_build  -DCMAKE_CXX_COMPILER=$(which g++)
+    - pushd c_build
+    - make -j 4 
+    # run the command here
+  artifacts:
+    paths:
+      - c_build/*
+  rules:
+    - changes:
+      - "*.md"
+      when: never
+    - when: always
+
+
+cpp_test:
+  stage:
+    test
+  script:
+    - make check 
+    # run the command here
+  artifacts:
+    paths:
+      - c_build/*
+  rules:
+    - changes:
+      - "*.md"
+      when: never
+    - when: always
