@@ -27,7 +27,8 @@ TEST_F(test_histogram, simple_build)
     for (size_t i = 0; i < hist2_paper.size(); ++i)
         hist_collection[1].set(i + 1, hist2_paper[i]);
     hist_collection[1].debug_print();
-    auto full_range  = hist_collection.get_range({0,1});
+    std::vector<size_t> range{0,1}; // If this is not size_t, get_range seg_faults.... ToDo: Investigate
+    auto full_range  = hist_collection.get_range(range);
     std::vector<unsigned> row1 = {1,5,2,3,6}; // A, E, B, C, F
     EXPECT_EQ(full_range.size(), 2);
     dist.begin_iteration(2);
