@@ -22,13 +22,24 @@ namespace ksets::distance {
 
             void begin_iteration_impl(size_t iter){
                 hist_sums_ = H_.totals();
+                miss_.resize(H_.size());
+                tsum_.resize(H_.size());
+                dists_.resize(H_.size());
             }
 
             void begin_row_impl() {
-                miss_.assign(H_.size(), 0);
-                tsum_.assign(H_.size(), 0);
-                dists_.assign(H_.size(), 0.0);
+                std::fill(miss_.begin(), miss_.end(), 0);
+                std::fill(tsum_.begin(), tsum_.end(), 0);
+                std::fill(dists_.begin(), dists_.end(), 0.0);   
+                //miss_.assign(H_.size(), 0);
+                //tsum_.assign(H_.size(), 0);
+                //dists_.assign(H_.size(), 0.0);
                 scratch_.resize(H_.size());
+            }
+
+            template <typename Range>
+            void accumulate_token_impl(const std::vector<token_t>& token_row, const Range& range) {
+                H_.get_all(token_row, tsum_, miss_, range);
             }
 
             template <typename Range>
