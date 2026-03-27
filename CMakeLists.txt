@@ -52,6 +52,7 @@ target_link_libraries(ksets_interface
         $<BUILD_INTERFACE:seqan::hibf>
         $<BUILD_INTERFACE:sharg::sharg>
         $<BUILD_INTERFACE:tsl::robin_map>
+        $<BUILD_INTERFACE:gtl>
 #
 #        # install-tree dependencies
 #        $<INSTALL_INTERFACE:seqan3::seqan3>
@@ -113,7 +114,7 @@ add_library(ksets::ksets ALIAS ksets)
 # Executables (main programs)
 # ---------------------------------------
 add_executable(cksets src/main/ksets.cpp)
-target_link_libraries(cksets PRIVATE ksets sharg::sharg seqan::hibf tsl::robin_map)
+target_link_libraries(cksets PRIVATE ksets sharg::sharg seqan::hibf)# tsl::robin_map gtl)
 target_compile_options(cksets PRIVATE -g -fno-omit-frame-pointer)
 
 

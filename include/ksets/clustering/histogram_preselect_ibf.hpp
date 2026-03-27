@@ -34,6 +34,7 @@ namespace ksets {
             ibf_(make_ibf(hist, data, 3u, fpr))
         {
             std::iota(indices_.begin(), indices_.end(), 0);
+            std::iota(fallback_indices_.begin(), fallback_indices_.end(), 0);
             all_bins_.reserve(ibf_.bin_count());
             for (size_t i = 0; i < ibf_.bin_count(); ++i)
                 all_bins_.push_back(seqan::hibf::bin_index{i});
@@ -52,7 +53,7 @@ namespace ksets {
         auto get_candidate_histograms_impl(const std::vector<token_t>& data_row) {
             //uint16_t threshold =
             //    static_cast<uint16_t>(data_row.size() * fpr_ + 0.999999);
-            uint16_t threshold =  static_cast<uint16_t>(0.9999 + std::sqrt(data_row.size()) * 1.2);
+            uint16_t threshold =  static_cast<uint16_t>(0.9999 + std::sqrt(data_row.size()) * .8);
             if (threshold < 2)
                 threshold = 2;
 
@@ -60,8 +61,13 @@ namespace ksets {
             auto const& res = cluster_agent_.membership_for(data_row, threshold);
             //indices_.clear();
             //indices_.insert(indices_.end(), res.begin(), res.end());
-            indices_.assign(res.begin(), res.end());
-            //indices_ = cluster_agent_.membership_for(data_row, threshold);
+            if (res.empty()){
+                indices_.assign(fallback_indices_.begin(), fallback_indices_.end());
+            } else {
+                indices_.assign(res.begin(), res.end());
+                //indices_ = cluster_agent_.membership_for(data_row, threshold);
+            }
+            
             return hists_.get_range(indices_);
             //return hists_.get_range(res);
         }
@@ -83,6 +89,7 @@ namespace ksets {
         HistogramCollection& hists_;
         const std::vector<std::vector<token_t>>& data_;
         std::vector<size_t> indices_;
+        std::vector<size_t> fallback_indices_;
         double fpr_ = 0.01;
         std::vector<seqan::hibf::bin_index> all_bins_;
         seqan::hibf::interleaved_bloom_filter ibf_;

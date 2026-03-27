@@ -1,0 +1,92 @@
+image: mambaorg/micromamba
+
+stages:
+  - build
+  - test
+
+# Change pip's cache directory to be inside the project directory since we can
+# only cache local items.
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  BASE_PYTHON: "3.10"
+  BASE_ENVNAME: "base"
+  BUILD_ENVNAME: "build_env"
+
+
+# https://pip.pypa.io/en/stable/topics/caching/
+cache:
+  key: micromamba-env
+  paths:
+    - /opt/conda/envs        
+    - .cache/pip              
+
+.setup_env:
+  before_script:
+    - micromamba create --yes python=$BASE_PYTHON -f build_env.yml -n ${BUILD_ENVNAME} || micromamba update --yes python=$BASE_PYTHON -f build_env.yml -n ${BUILD_ENVNAME}
+    - eval "$(micromamba shell hook --shell=bash)"
+    - micromamba install -y -n ${BUILD_ENVNAME} -c conda-forge git
+    - micromamba activate ${BUILD_ENVNAME}
+
+.default_rules:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: always
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "integration"'
+      changes:
+        - "**/CMakeLists.txt"
+        - "cmake/*"
+        - "src/**/*"
+        - "include/**/*"
+        - "python_bindings/**/*"
+        - "test/**/*"
+        - "ksets_cpp/**/*"
+        - ".gitlab-ci.yml"
+        - "build_env.yml"
+        - "pyproject.toml"
+      when: always
+    - when: never
+
+
+py_build:
+  stage: build
+  extends:
+    - .setup_env
+    - .default_rules
+  script:
+    - pip install .
+    # run the command here
+  artifacts:
+    paths:
+      - build/*
+
+cpp_build:
+  stage: build
+  extends:
+    - .setup_env
+    - .default_rules
+  script:
+    - cmake  -B c_build  -DCMAKE_CXX_COMPILER=$(which g++)
+    - pushd c_build
+    - make -j 4 
+    # run the command here
+  artifacts:
+    paths:
+      - c_build/*
+  
+
+
+cpp_test:
+  stage: test
+  extends:
+    - .setup_env
+    - .default_rules
+  needs:
+    - cpp_build
+  script:
+    - cd c_build
+    - make check 
+    # run the command here
+  artifacts:
+    paths:
+      - c_build/*
+  

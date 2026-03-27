@@ -262,9 +262,12 @@ ClusterResult cluster_cpp(
                 next_report = report_interval;
             }  // End of Telemetry Report for Preselect Strategy  
             
-            for (auto const& token : data[i]) { // accumulate distance measures used
-                    distance.accumulate_token(token, histRange);
-            } 
+            //for (auto const& token : data[i]) { // accumulate distance measures used
+            //        distance.accumulate_token(token, histRange);
+            //}
+            
+            distance.accumulate_token(data[i], histRange); // accumulate distance measures used
+         
             // return finalized distances 
             auto const& dists = distance.finalize();
             // Emit Trace Telemetry for distances computed 

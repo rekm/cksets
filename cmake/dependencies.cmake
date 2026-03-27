@@ -21,6 +21,7 @@ CPMGetPackage (pybind11)
 # Disable install/config generation for dependencies
 set(TSL_ROBIN_MAP_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 CPMGetPackage (robinmap)
+CPMGetPackage (gtl)
 
 # Only include Chopper if your project uses HIBF layout computation
 option(KSETS_USE_CHOPPER "Enable chopper dependency" OFF)

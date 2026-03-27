@@ -112,6 +112,13 @@ CPMDeclarePackage (robinmap
                    GITHUB_REPOSITORY Tessil/robin-map
                    SYSTEM TRUE)
 
+set (KSETS_GTL_VERSION 1.2.0 CACHE STRING "")
+CPMDeclarePackage (gtl
+                   NAME gtl
+                   VERSION ${KSETS_GTL_VERSION} # main
+                   GITHUB_REPOSITORY greg7mdp/gtl
+                   SYSTEM TRUE)
+
 
 # cmake-format: on
 
