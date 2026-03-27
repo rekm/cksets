@@ -20,6 +20,7 @@ class MapHistogramCollection
     size_t K_;
     HashPolicy hash_;
     AllocatorPolicy alloc_;
+    //mutable std::vector<size_t> row_hashes_;
 
 public:
     
@@ -78,6 +79,7 @@ public:
     void get_all(const token_t& token, std::vector<MapVal>& out) const {
         for (auto const& h : histograms_) out.push_back(h.get(token));
     }
+
     template <class Alloc, class IndexContainer>
     void get_all(const token_t& token, std::vector<MapVal, Alloc>& out, CollectionRange<MapHistogramCollection, IndexContainer> range) const {
         size_t h  = hash_.hash(token);
@@ -85,7 +87,37 @@ public:
             out[cluster_idx] = histograms_[cluster_idx].get_with_hash(token, h);
     }
 
+    template <typename CountType, class Alloc, class IndexContainer>
+    void get_all(
+            const std::vector<token_t>& token_row, 
+            std::vector<CountType, Alloc>& out_sum,
+            std::vector<CountType, Alloc>& out_misses, 
+            CollectionRange<MapHistogramCollection, IndexContainer> range) const {
+
+        //if (row_hashes_.size() < token_row.size())
+        //    row_hashes_.resize(token_row.size());
+        //row_hashes_.resize(token_row.size());
+        std::vector<size_t> row_hashes(token_row.size());
+        for (size_t i=0; i<token_row.size(); ++i) 
+            row_hashes[i] = hash_.hash(token_row[i]);
+        for (const cluster_t cluster_idx : range){
+            auto &cur_hist = histograms_[cluster_idx]; 
+            CountType misses = 0;
+            CountType total = 0;
+            for (size_t i=0; i<token_row.size(); ++i) {
+                //auto v = cur_hist.get(token_row[i]);
+                auto v = cur_hist.get_with_hash(token_row[i], row_hashes[i]);
+                total += v;
+                misses += (v == 0);
+            }
+            out_misses[cluster_idx] = misses; 
+            out_sum[cluster_idx] = total;
+        }
+    }
+
     size_t size() const { return histograms_.size(); }
+
+    
 };
 
 } // namespace ksets::histogram
