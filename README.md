@@ -10,7 +10,7 @@ Which is the companion code repository to the article by [Rezaei and Fränti (20
     mamba env create -f build_env.yml
     conda activate cksets_build
     pip install .
-    py-cksets --help
+    py-cksets --help # python wrapped c++ code 
     py-ksets --help # Original Authors code trimmed down for comparison sake
 ```
 
@@ -26,17 +26,18 @@ Which is the companion code repository to the article by [Rezaei and Fränti (20
 ```
 
 ## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+
+### ToDos: 
+ - [ ] Explain API of ksets library
+ - [ ] Show how to run the example test runs from the ksets authors 
 
 
 
-## Gitlab Project Setup inspiration
 
-### Collaborate with your team
+***
 
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+<details><summary>Readme Help</summary>
+
 
 ### Test and Deploy
 
@@ -47,9 +48,7 @@ Use the built-in continuous integration in GitLab.
 - [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
 - [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
 
-***
 
-<details><summary>Readme Help</summary>
 
 ### Editing this README
 
