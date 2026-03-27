@@ -11,12 +11,14 @@ variables:
   BASE_PYTHON: "3.10"
   BASE_ENVNAME: "base"
   BUILD_ENVNAME: "build_env"
+  MAMBA_ROOT_PREFIX: "$CI_PROJECT_DIR/.mamba"
 
 
 # https://pip.pypa.io/en/stable/topics/caching/
 cache:
   paths:
     - .cache/pip
+    - .mamba
 
 .setup_env:
   before_script:
@@ -27,6 +29,8 @@ cache:
 
 .default_rules:
   rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: always
     - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "integration"'
       changes:
         - "**/*"
@@ -36,8 +40,7 @@ cache:
 
 
 py_build:
-  stage:
-    build
+  stage: build
   extends:
     - .setup_env
     - .default_rules
@@ -49,8 +52,7 @@ py_build:
       - build/*
 
 cpp_build:
-  stage:
-    build
+  stage: build
   extends:
     - .setup_env
     - .default_rules
@@ -66,11 +68,12 @@ cpp_build:
 
 
 cpp_test:
-  stage:
-    test
+  stage: test
   extends:
     - .setup_env
     - .default_rules
+  needs:
+    - cpp_build
   script:
     - cd c_build
     - make check 
