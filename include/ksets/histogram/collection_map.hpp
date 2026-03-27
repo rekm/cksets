@@ -20,6 +20,7 @@ class MapHistogramCollection
     size_t K_;
     HashPolicy hash_;
     AllocatorPolicy alloc_;
+    //mutable std::vector<size_t> row_hashes_;
 
 public:
     
@@ -93,6 +94,9 @@ public:
             std::vector<CountType, Alloc>& out_misses, 
             CollectionRange<MapHistogramCollection, IndexContainer> range) const {
 
+        //if (row_hashes_.size() < token_row.size())
+        //    row_hashes_.resize(token_row.size());
+        //row_hashes_.resize(token_row.size());
         std::vector<size_t> row_hashes(token_row.size());
         for (size_t i=0; i<token_row.size(); ++i) 
             row_hashes[i] = hash_.hash(token_row[i]);
@@ -112,6 +116,8 @@ public:
     }
 
     size_t size() const { return histograms_.size(); }
+
+    
 };
 
 } // namespace ksets::histogram

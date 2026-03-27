@@ -2,6 +2,7 @@
 
 #include <ksets/distance/base.hpp>
 #include <ksets/memory/aligned_allocator.hpp>
+#include <cstring>
 
 namespace ksets::distance {
     template<class HistogramCollection>
@@ -22,19 +23,24 @@ namespace ksets::distance {
 
             void begin_iteration_impl(size_t iter){
                 hist_sums_ = H_.totals();
-                miss_.resize(H_.size());
-                tsum_.resize(H_.size());
-                dists_.resize(H_.size());
+                //miss_.resize(H_.size());
+                //tsum_.resize(H_.size());
+                //dists_.resize(H_.size());
             }
 
             void begin_row_impl() {
-                std::fill(miss_.begin(), miss_.end(), 0);
-                std::fill(tsum_.begin(), tsum_.end(), 0);
-                std::fill(dists_.begin(), dists_.end(), 0.0);   
-                //miss_.assign(H_.size(), 0);
-                //tsum_.assign(H_.size(), 0);
-                //dists_.assign(H_.size(), 0.0);
-                scratch_.resize(H_.size());
+                //std::fill(miss_.begin(), miss_.end(), 0);
+                //std::fill(tsum_.begin(), tsum_.end(), 0);
+                //std::fill(dists_.begin(), dists_.end(), 0.0);
+                size_t N = H_.size();
+                //miss_.resize(N);
+                //tsum_.resize(N);
+                //std::memset(miss_.data(), 0, N * sizeof(miss_[0]));
+                //std::memset(tsum_.data(), 0, N * sizeof(tsum_[0]));   
+                miss_.assign(N, 0);
+                tsum_.assign(N, 0);
+                dists_.assign(N, 0.0);
+                scratch_.resize(N);
             }
 
             template <typename Range>
