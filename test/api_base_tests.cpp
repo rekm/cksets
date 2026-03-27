@@ -13,6 +13,46 @@
 struct test_histogram : public app_test
 {};
 
+TEST_F(test_histogram, histogram_store_and__simple_retrieval){
+    uint number_of_clusters{2};
+    auto hash_policy = ksets::hashing::HashPolicy(ksets::hashing::MurmurHash(42));
+    ksets::histogram::MapHistogramCollection hist_collection(number_of_clusters, hash_policy);
+    ksets::distance::JaccardDistance dist(hist_collection);
+    std::vector<unsigned> hist1_paper = {5, 5, 4, 2, 1, 1, 1, 1, 1, 1};
+    for (size_t i = 0; i < hist1_paper.size(); ++i)
+        hist_collection[0].set(i + 1, hist1_paper[i]);
+    hist_collection[0].debug_print();
+    for (const auto& kv : hist_collection[0].expose_map()) {
+        EXPECT_EQ(hist_collection[0].get(kv.first), kv.second);
+    }      
+
+}
+
+
+TEST_F(test_histogram, histogram_store_and__hash_retrieval){
+    uint number_of_clusters{2};
+    auto hash_policy = ksets::hashing::HashPolicy(ksets::hashing::MurmurHash(42));
+    ksets::histogram::MapHistogramCollection hist_collection(number_of_clusters, hash_policy);
+    ksets::distance::JaccardDistance dist(hist_collection);
+    std::vector<unsigned> hist1_paper = {5, 5, 4, 2, 1, 1, 1, 1, 1, 1};
+    for (size_t i = 0; i < hist1_paper.size(); ++i)
+        hist_collection[0].set(i + 1, hist1_paper[i]);
+    hist_collection[0].debug_print();
+    size_t it = 0;   
+    for (const auto& kv : hist_collection[0].expose_map()) {
+        size_t hash = hash_policy(kv.first);
+        EXPECT_EQ(hist_collection[0].get_with_hash(kv.first, hash), kv.second)
+         << "While looking up value " << it+1 << " of " << hist1_paper.size() << "\n"
+         << "hash(" << kv.first << ") = " << hash << "\n"
+         << "pointed to a value of " <<  hist_collection[0].get_with_hash(kv.first,hash) << " instead of " << kv.second ;
+         it++;
+    }      
+
+}
+
+
+
+
 TEST_F(test_histogram, paper_test_slow_loop)
 {
     uint number_of_clusters{2};
