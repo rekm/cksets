@@ -17,6 +17,7 @@
 #include <numeric>
 #include <iostream>
 #include <algorithm>
+#include <random>
 #include <ranges>
 #include <vector>
 #include <chrono>
@@ -180,8 +181,8 @@ ClusterResult cluster_cpp(
         Sink sink = {}){
 
     bool histograms_provided = ! histograms.empty();
-    HistogramPreselectPolicy<HistogramCollection> histPreselector(histograms, data);
-    HistogramUpdatePolicy<HistogramCollection> histUpdater(histograms, data, histograms_provided);
+    
+    
     DistancePolicy<HistogramCollection> distance(histograms);
  
 
@@ -198,20 +199,24 @@ ClusterResult cluster_cpp(
     });
     std::vector<label_t> labels_cur(data.size());
     std::vector<label_t> labels_prev(data.size());
-
+    std::mt19937_64 rng(seed);
     
     // Build initial histograms if not provided 
     auto randomizer = ksets::hashing::MurmurHash(seed);
     if (! histograms_provided){
-        for (size_t i = 0; i < data.size(); i++) {
-            size_t cluster = randomizer(i) % K;
-            labels_cur[i] = cluster;
-            for (auto const& token : data[i]) {
-                histograms.increment(cluster, token);
+        std::vector<size_t> indices(data.size());
+        std::iota(indices.begin(), indices.end(), size_t{});
+        std::shuffle(indices.begin(), indices.end(), rng);
+        for (cluster_t i = 0; i < K; i++) {
+            size_t index = indices[i];
+            for (auto const& token : data[index]) {
+                histograms.increment(i, token);
             }
         }
+        histograms_provided = true; 
     }
-    
+    HistogramPreselectPolicy<HistogramCollection> histPreselector(histograms, data);
+    HistogramUpdatePolicy<HistogramCollection> histUpdater(histograms, data, histograms_provided);
     EmptyClusterPolicy emptyClusterFix(labels_cur, K);
 
     // Zero out data structurs
