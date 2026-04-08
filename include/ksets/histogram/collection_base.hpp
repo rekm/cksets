@@ -40,7 +40,13 @@ namespace ksets::histogram {
                 std::move(indices)
             };
         }*/
-
+        template <typename T>
+        auto get_range(std::span<const T> indices) 
+            -> CollectionRange<Derived, std::span<const T>>
+        {
+            Derived* self = static_cast<Derived*>(this);
+            return CollectionRange<Derived, std::span<const T>>{self, indices};
+        }
 
         template<std::ranges::forward_range R>
         auto get_range(const R& indices) 
@@ -50,8 +56,8 @@ namespace ksets::histogram {
             return CollectionRange<Derived, std::span<const typename R::value_type>>{
                 self,
                 std::span<const typename R::value_type>(indices)
-        };
-}
+            };
+        }
 
         // Query all histograms in the collection at once
         void get_all(const token_t& token, std::vector<hist_count_t>& out) const {
