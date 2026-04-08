@@ -11,6 +11,7 @@
 #include <ksets/clustering/histogram_update_ksets_authors.hpp>
 #include <ksets/clustering/histogram_preselect_nothing.hpp>
 #include <ksets/clustering/histogram_preselect_ibf.hpp>
+#include <ksets/clustering/histogram_preselect_ibf_partition.hpp>
 #include <ksets/types.hpp>
 #include <ksets/telemetry.hpp>
 
@@ -69,7 +70,7 @@ private:
     void print(const ksets::DistanceMeasureTelemetry& e) const {
         std::cerr << "[Iteration " << e.iter << ", Data Row: " << e.data_row << " ]" ;
         size_t iter = 0;
-        char* sep = " "; 
+        std::string sep = " "; 
         for ( const auto &dist: e.distances) {
             std::cerr << sep << iter << ": " << dist;
             ++iter;
@@ -91,7 +92,7 @@ private:
                   << "Objective: " << e.objective
                   << ", Delta: " << e.delta;
         if (savings_events > 0){
-            double avg_savings = savings_preselect / double{savings_events};
+            double avg_savings = savings_preselect / static_cast<double>(savings_events);
             std::cerr << ", Avg Preselect Savings: " << avg_savings * 100 << "%";  
         }          
         savings_events = 0;
@@ -250,7 +251,7 @@ int main(int argc, char ** argv)
             r = ksets::cluster_cpp<
                 decltype(hist_collection), 
                 ksets::HistUpdaterMemorizeChanges,
-                ksets::HistPreselectIBF
+                ksets::HistPreselectIBF//Partitioned
                 >(data, number_of_clusters, max_hist_length, hist_collection, max_iter, seed, cerr_sink);
         }
     } else if (hist_rebuild == "full"){
@@ -264,7 +265,7 @@ int main(int argc, char ** argv)
             r = ksets::cluster_cpp<
                 decltype(hist_collection), 
                 ksets::HistUpdaterKsetsAuthors,
-                ksets::HistPreselectIBF
+                ksets::HistPreselectIBF//Partitioned
                 >(data, number_of_clusters, max_hist_length, hist_collection, max_iter, seed, cerr_sink);
         }
     } else {
