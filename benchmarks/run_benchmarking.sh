@@ -24,7 +24,7 @@ SOURCE_DIR="$(get_script_dir)"
 main() {
     local benchmark_root="${1:-$SOURCE_DIR}"
     pushd "$benchmark_root"
-    #get_benchmarks 
+    #larger_data_easy | rm_todos  
     set_todos
     run_worker
     popd
@@ -41,17 +41,56 @@ set_todos(){
     done
 }
 
-get_benchmarks() {
+rm_todos() {
+    mkdir -p "$BENCH_DIR"
+    mkdir -p "$RESULT_DIR"
+    while IFS="\n" read  opts;
+    do 
+        local hash=$(md5sum <<< $opts | cut -d" " -f1)
+        [ -f "$RESULT_DIR"/"$hash".txt ] && rm "$RESULT_DIR"/"$hash".txt;
+    done
+}
+
+
+art_benchmarks() {
     mapfile -t art_data < <(for f in $(ls -1 ${DATA_FOLDER}/artificial/data*) ; do 
         basename ${f%.txt}
     done | tr  "_" ' '| awk '{print "ksets_art_" $0}' ) 
     arraylength=${#art_data[@]}
     arraylength=1
-    #for (( i=0; i<${arraylength}; i++ )); do 
-        #printf "%s\n" "${art_data[$i]} --- cksets "{1..4}" dry 2 0 none full"
-        #printf "${art_data[$i]} --- %s\n" \
-        # "cksets "{1..4}" run "{2,4,8,16,32,64,128,256,384,512,768,1024}" "{0,0}" "{none,ibf}" "{full,memorize}
-    #done
+    for (( i=0; i<${arraylength}; i++ )); do 
+        printf "%s\n" "${art_data[$i]} --- cksets "{1..4}" dry 2 0 none full"
+        printf "${art_data[$i]} --- %s\n" \
+         "cksets "{1..4}" run "{2,4,8,16,32,64,128,256,384,512,768,1024}" "{0,0}" "{none,ibf}" "{full,memorize}
+    done
+}
+
+larger_data_easy() {
+    local clust_size=${1:-512}
+    mapfile -t sim_data_4 < <(printf "%s\n" "sim_icd_data_40000_${clust_size}_1600 "{1200,2000,3000,4000,5000,6000}" NA ${clust_size} 0 1" )
+    arraylength=${#sim_data_4[@]}
+    for (( i=0; i<${arraylength}; i++ )); do 
+        #printf "%s\n" "${sim_data_4[$i]} --- cksets "{1..4}" dry 2 0 none full"
+        printf "${sim_data_4[$i]} --- %s\n" \
+         "cksets "{1..3}" run "{${clust_size},${clust_size}}" "{0,0}" "{none,ibf}" "{full,memorize}    
+    done
+}
+
+larger_data_hard() {
+    local clust_size=${1:-512}
+    mapfile -t sim_data_4 < <(printf "%s\n" "sim_icd_data_40000_${clust_size}_1600 "{7000,10000,15000,30000,40000}" NA ${clust_size} 0 1" )
+    arraylength=${#sim_data_4[@]}
+    for (( i=0; i<${arraylength}; i++ )); do 
+        #printf "%s\n" "${sim_data_4[$i]} --- cksets "{1..4}" dry 2 0 none full"
+        printf "${sim_data_4[$i]} --- %s\n" \
+         "cksets "{1..3}" run "{${clust_size},${clust_size}}" "{0,0}" "{none,ibf}" "{full,memorize}    
+    done
+}
+
+
+get_benchmarks() {
+    art_benchmarks
+    larger_data_easy
     #mapfile -t sim_data_2 < <(printf "%s\n" "sim_icd_data_38451 "{1200,2000,4000,8000,10000,20000,30000,38451,50000}" NA 500 0 1" )
     #arraylength=${#sim_data_2[@]}
     #for (( i=0; i<${arraylength}; i++ )); do 
@@ -59,13 +98,15 @@ get_benchmarks() {
     #    printf "${sim_data_2[$i]} --- %s\n" \
     #     "cksets "{1..3}" run "{16,512}" "{0,0}" "{none,ibf}" "{full,memorize}
     #done
-    mapfile -t sim_data_3 < <(printf "%s\n" "sim_icd_data_38451_500_4600 "{1200,2000,3000,4000,5000,6000,7000,15000}" NA 500 0 1" )
-    arraylength=${#sim_data_3[@]}
-    for (( i=0; i<${arraylength}; i++ )); do 
-        #printf "%s\n" "${sim_data_3[$i]} --- cksets "{1..4}" dry 2 0 none full"
-        printf "${sim_data_3[$i]} --- %s\n" \
-         "cksets "{1..3}" run "{16,16}" "{0,0}" "{none,ibf}" "{full,memorize}
-    done
+    #mapfile -t sim_data_3 < <(printf "%s\n" "sim_icd_data_38451_500_4600 "{1200,2000,3000,4000,5000,6000,7000,15000}" NA 500 0 1" )
+    #arraylength=${#sim_data_3[@]}
+    #for (( i=0; i<${arraylength}; i++ )); do 
+    #    #printf "%s\n" "${sim_data_3[$i]} --- cksets "{1..4}" dry 2 0 none full"
+    #    printf "${sim_data_3[$i]} --- %s\n" \
+    #     "cksets "{1..3}" run "{16,16}" "{0,0}" "{none,ibf}" "{full,memorize}
+    #
+    #done
+    
 }
 
 
@@ -89,6 +130,21 @@ benchmark() {
 
 }
 
+truncate_or_duplicate() {
+    local target_num=$1
+    local s_file="$2"
+    local out_file="$3" 
+    awk -v N="$target_num" '{
+                lines[NR] = $0
+            }
+            END {
+                for (i=1; i<=N; i++) {
+                    print lines[(i-1) % NR + 1]
+                }
+            }' "$s_file" > "$out_file"
+}
+
+
 get_dataset_file() {
     if [ "$1" == "ksets_art_data" ] ; then
         local fname=$(tr " " "_" <<< "${*:2}" )
@@ -97,27 +153,25 @@ get_dataset_file() {
         local fname=$(tr " " "_" <<< "${*:1}" )
         local source_f="${DATA_FOLDER}/my_sim/sim_icd_38451_500.txt"
         local target_f="${DATA_FOLDER}/my_sim/${fname}.txt"
-        awk -v N="$2" '{
-                lines[NR] = $0
-            }
-            END {
-                for (i=1; i<=N; i++) {
-                    print lines[(i-1) % NR + 1]
-                }
-            }' "$source_f" > "$target_f"
+        truncate_or_duplicate $2 $source_f $target_f
         echo $target_f 
     elif [ "$1" == "sim_icd_data_38451_500_4600" ] ; then
         local fname=$(tr " " "_" <<< "${*:1}" )
         local source_f="${DATA_FOLDER}/my_sim/sim_icd_38451_500_4600.txt"
         local target_f="${DATA_FOLDER}/my_sim/${fname}.txt"
-        awk -v N="$2" '{
-                lines[NR] = $0
-            }
-            END {
-                for (i=1; i<=N; i++) {
-                    print lines[(i-1) % NR + 1]
-                }
-            }' "$source_f" > "$target_f"
+        truncate_or_duplicate $2 $source_f $target_f
+        echo $target_f
+    elif [ "$1" == "sim_icd_data_40000_128_1600" ] ; then
+        local fname=$(tr " " "_" <<< "${*:1}" )
+        local source_f="${DATA_FOLDER}/my_sim/sim_icd_40000_128_1600.txt"
+        local target_f="${DATA_FOLDER}/my_sim/${fname}.txt"
+        truncate_or_duplicate $2 $source_f $target_f
+        echo $target_f
+    elif [ "$1" == "sim_icd_data_40000_512_1600" ] ; then
+        local fname=$(tr " " "_" <<< "${*:1}" )
+        local source_f="${DATA_FOLDER}/my_sim/sim_icd_40000_512_1600.txt"
+        local target_f="${DATA_FOLDER}/my_sim/${fname}.txt"
+        truncate_or_duplicate $2 $source_f $target_f
         echo $target_f
     else
         1>&2 echo "Unknown DataSet Configuration" 

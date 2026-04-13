@@ -12,11 +12,14 @@ LOCAL_FOLDER = pathlib.Path(__file__).parent
 def parse_args(cmds):
     parser = argparse.ArgumentParser(prog="ResultCollector")
     parser.add_argument("--bdir", default=LOCAL_FOLDER, type=pathlib.Path)
-
+    parser.add_argument("--locale", choices=["none", "de"], default="none")
+    parser.add_argument("--identifier",  "-i", default=None)
+    parser.add_argument("--id_name", "-n", default="SecondID")
     return parser.parse_args(cmds)
 
 
-def parse_file(args, _f: pathlib.Path):
+def parse_file(args, _f: pathlib.Path, sec_id=None):
+
     _id = _f.stem
     (
         start_time,   
@@ -33,11 +36,15 @@ def parse_file(args, _f: pathlib.Path):
         algo_histlen,  
         algo_preselect,
         algo_rebuild,
+        algo_iterations,
+        algo_mean_preselect_savings,
+        algo_distance_score, 
         algo_t_preprocess,
         algo_t_algo,
         algo_t_wall,
         algo_max_memory,
-    ) = ([None] * 18)
+    ) = ([None] * 21)
+    algo_preselect_savings = []
     with _f.open("r") as fh:
         for line in fh.readlines():
             line = line.strip()
@@ -69,21 +76,26 @@ def parse_file(args, _f: pathlib.Path):
                     algo_histlen   = algo_opts[4]
                     algo_preselect = algo_opts[5]
                     algo_rebuild   = algo_opts[6]
-            line_parse = line.split("Initial Data Processing (seconds):")
-            if len(line_parse) == 2:
-                algo_t_preprocess = line_parse[1].strip()
-            line_parse = line.split("Algorithm Total Runtime (seconds):")
-            if len(line_parse) == 2:
-                algo_t_algo = line_parse[1].strip()
-            line_parse = line.split("Elapsed (wall clock) time (h:mm:ss or m:ss):")
-            if len(line_parse) == 2:
-                algo_t_wall = line_parse[1].strip()
-            line_parse = line.split("Maximum resident set size (kbytes):")
-            if len(line_parse) == 2:
-                algo_max_memory = line_parse[1].strip()
-            
-    print(
-        _id, 
+           
+            algo_t_preprocess   = easy_split_parse(line, "Initial Data Processing (seconds):")
+            algo_t_algo         = easy_split_parse(line, "Algorithm Total Runtime (seconds):")
+            algo_t_wall         = easy_split_parse(line, "Elapsed (wall clock) time (h:mm:ss or m:ss):")
+            algo_max_memory     = easy_split_parse(line, "Maximum resident set size (kbytes):")
+            algo_distance_score = easy_split_parse(line, "Sum of Total Distances:")
+            algo_iterations     = easy_split_parse(line, "Total Iterations:")
+
+            line_parse = re.match(pattern=r".*Avg Preselect Savings: *([\d\.]+)%.*", string=line)
+            if line_parse is not None:
+                algo_preselect_savings.append(float(line_parse.group(1)))
+
+    if algo_preselect_savings and algo_iterations is not None:
+        algo_mean_preselect_savings = sum(algo_preselect_savings) / float(algo_iterations)
+
+    data_row = [_id]
+    if sec_id is not None:
+         data_row.append(sec_id)
+    
+    data_row.extend([    
         start_time,
         dataset_type,
         dataset_len,
@@ -98,17 +110,38 @@ def parse_file(args, _f: pathlib.Path):
         algo_histlen,  
         algo_preselect,
         algo_rebuild,
+        algo_iterations,
+        algo_mean_preselect_savings,
+        algo_distance_score,
         algo_t_preprocess,
         algo_t_algo,
         algo_t_wall,
-        algo_max_memory,  
+        algo_max_memory
+    ])
+
+    print(
+        *data_row,  
         sep="\t")
          
+
+def easy_split_parse(line, split_str, default=None):
+    ret = default
+    line_parse = line.split(split_str)
+    if len(line_parse) == 2:
+                ret = line_parse[1].strip()
+    return ret
 
 def main(CMD=None):
     args = parse_args(CMD)
     
-    print(
+    if args.locale != "none":
+         locales_dict = {"de": "de_DE.UTF-8"}
+         locale.setlocale(locale.LC_TIME, locales_dict[args.locale])
+
+    header = ["id"]
+    if args.identifier is not None:
+         header.append(args.id_name)
+    header.extend([
         "id", 
         "start_time",
         "dataset_type",
@@ -124,17 +157,22 @@ def main(CMD=None):
         "algo_histlen",  
         "algo_preselect",
         "algo_rebuild",
+        "algo_iterations",
+        "algo_mean_preselect_savings",
+        "algo_distance_score",
         "algo_t_preprocess",
         "algo_t_algo",
         "algo_t_wall",
-        "algo_max_memory",
+        "algo_max_memory"
+        ])     
+    print(*header,
         sep="\t"
     )
     all_results = (args.bdir / "results").glob("*.txt")
     for i, _file in enumerate(all_results):
         #if i >= 1:
         #    break 
-        parse_file(args, _file)
+        parse_file(args, _file, sec_id=args.identifier)
          
 
 

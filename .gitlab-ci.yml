@@ -3,6 +3,7 @@ image: mambaorg/micromamba
 stages:
   - build
   - test
+  - benchmark
 
 # Change pip's cache directory to be inside the project directory since we can
 # only cache local items.
@@ -26,6 +27,18 @@ cache:
     - eval "$(micromamba shell hook --shell=bash)"
     - micromamba install -y -n ${BUILD_ENVNAME} -c conda-forge git
     - micromamba activate ${BUILD_ENVNAME}
+
+.benchmark_rule_base_cpp:
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "benchmark"'
+      changes:
+        - "**/CMakeLists.txt"
+        - "cmake/*"
+        - "src/**/*"
+        - "include/**/*"
+        - "python_bindings/**/*"
+        - "ksets_cpp/**/*"
+        - ".gitlab-ci.yml"
 
 .default_rules:
   rules:
@@ -89,4 +102,20 @@ cpp_test:
   artifacts:
     paths:
       - c_build/*
+
+cpp_base_benchmark:
+  stage: benchmark
+  extends:
+    - .setup_env
+    - .benchmark_rule_base_cpp
+  needs:
+    - cpp_build
+  script:
+    - mkdir benchmark_results #              $(git rev-parse --short HEAD)
+    - ./benchmarks/run_benchmarking  ksets_easy_sim 
+    - ./benchmarks/collect_benchmarks.py -i "$CI_COMMIT_SHORT_SHA" -n commit  > ./benchmark_results/benchmark.tsv 
+  artifacts:
+    paths:
+      - benchmark_results/*
+
   
