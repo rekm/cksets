@@ -53,9 +53,7 @@ namespace ksets {
         auto get_candidate_histograms_impl(const std::vector<token_t>& data_row) {
             //uint16_t threshold =
             //    static_cast<uint16_t>(data_row.size() * fpr_ + 0.999999);
-            uint16_t threshold =  static_cast<uint16_t>(0.9999 + std::sqrt(data_row.size()) * .8);
-            if (threshold < 2)
-                threshold = 2;
+            uint16_t threshold =  static_cast<uint16_t>(0.9999 + std::sqrt(data_row.size()) * .1);
 
             //return hists_.get_range(cluster_agent_.membership_for(data_row, threshold));
             auto const& res = cluster_agent_.membership_for(data_row, threshold);
