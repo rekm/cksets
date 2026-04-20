@@ -76,11 +76,12 @@ int main(int argc, char ** argv) {
             prefix = prefix_buffer.str();
 
         }
-        double ibf_fpr = 0.003;
+        double ibf_fpr = 0.005 / 64.0;
         size_t universe_size = static_cast<size_t>(sample_length * (inner_jaccard + 1.0) / (2*inner_jaccard * density));
-        size_t absolute_overlap = static_cast<size_t>(std::ceil(number_of_clusters * density * 2 * inner_jaccard /( inner_jaccard + 1 )));
+        size_t absolute_overlap = static_cast<size_t>(std::ceil(sample_length * density * ( inner_jaccard + 1 ) / (2.0 * inner_jaccard)));
         // Sigmas and Means 
-        double var_overlap = absolute_overlap;
+        double p_overlap = absolute_overlap / double(sample_length);
+        double var_overlap = absolute_overlap * p_overlap * (1.0 - p_overlap);
         double var_ibf = ibf_fpr * sample_length * (1.0 - ibf_fpr);
         size_t mu_ibf = ibf_fpr * sample_length;
         double sigma_fp = std::sqrt(var_overlap + var_ibf);
@@ -88,9 +89,12 @@ int main(int argc, char ** argv) {
         double p_tp = (2.0 * inner_jaccard) / (1.0 + inner_jaccard);
         double mu_tp = sample_length * p_tp;
         double sigma_tp = std::sqrt(sample_length * p_tp * (1.0 - p_tp));
-        double separation = (mu_tp - mu_fp) / sigma_fp;
+        double sigma_total = std::sqrt((var_overlap + var_ibf) + (sigma_tp * sigma_tp));
+
+        double separation = (mu_tp - mu_fp) / sigma_total;
+        //double separation = (mu_tp - mu_fp) / sigma_fp;
         double optimal_threshold =  static_cast<size_t>(std::ceil(mu_fp + 3 * sigma_fp));
-        double sqrt_threshold = static_cast<size_t>(.9999 + std::sqrt(sample_length) * 1.2);
+        double sqrt_threshold = static_cast<size_t>(.9999 + std::sqrt(sample_length) * 0.1);
         double optimal_keep_fp = keep_probability(optimal_threshold, mu_fp, sigma_fp);
         double optimal_keep_tp = keep_probability(optimal_threshold, mu_tp, sigma_tp);
         double optimal_expected_candidates = optimal_keep_tp + (number_of_clusters - 1) * optimal_keep_fp;  // This breaks for small numbers of clusters 
@@ -115,7 +119,7 @@ int main(int argc, char ** argv) {
          << "Expected Overlap (absolute) between unrelated clusters: " 
             << absolute_overlap << "\n"
          << "Expected Overlap (relative) between unrelated clusters: " 
-            << static_cast<double>(number_of_clusters * density * 2 * inner_jaccard /( (inner_jaccard + 1) * sample_length )) << "\n"
+            << absolute_overlap / static_cast<double>( sample_length) << "\n"
          << "\n" 
          << "-- IBF info --\n"
          << "IBF Expected False Positives (FPR "<< ibf_fpr <<"): " << mu_ibf << "\n" 
@@ -138,6 +142,7 @@ int main(int argc, char ** argv) {
      
     std::vector<genicds::Group> groups;
     std::vector<std::vector<genicds::pcode_t>> rep_members(number_of_clusters);
+    std::vector<std::unordered_map<genicds::pcode_t,size_t>> histograms(number_of_clusters); 
     for(genicds::gcode_t i=0;i<number_of_clusters;i++) {
         groups.push_back({
             genicds::gcode_t(i),
@@ -166,11 +171,17 @@ int main(int argc, char ** argv) {
             if (!first){
                 out << ' ';
             }
-            out << genicds::extract_local(code);
+            auto pcode = genicds::extract_local(code);
+            auto gcode = genicds::extract_group(code);
+            out << pcode;
             first = false;
+            auto [it, inserted] = histograms[gcode].try_emplace(pcode, 1);
+            if (!inserted)
+                ++it->second;
         }
         out << '\n';
     }
+    //Output representatives 
     for (auto &rep : rep_members ){
         bool first = true;
         for (auto code : rep) {
@@ -181,4 +192,21 @@ int main(int argc, char ** argv) {
         }
         rep_out << "\n";
     }
+    //Approx Overlaps Between Clusters
+    size_t approx_overlaps = 0;
+    size_t comparisons = 0;
+
+    for (size_t i=1; i<number_of_clusters; ++i) {
+        for (size_t j = 0; j < i; ++j) {
+            auto & prev_hist = histograms[j];
+            for (auto &[pcode, count]: histograms[i]) {
+                auto it = prev_hist.find(pcode);
+                approx_overlaps += (it != prev_hist.end());
+            }
+            comparisons++;
+        }
+    }
+    
+    approx_overlaps /= comparisons; 
+    std::cerr << "Observed average overlap (absolute) between clusters: " << approx_overlaps << "\n";   
 }
