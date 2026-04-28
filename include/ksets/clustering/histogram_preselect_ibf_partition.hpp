@@ -15,6 +15,7 @@
 
 namespace ksets {
 
+    
 
     template <typename HistogramCollection>
     class HistPreselectIBFPartitioned
@@ -27,7 +28,7 @@ namespace ksets {
         
         explicit HistPreselectIBFPartitioned(HistogramCollection& hist,
                             const std::vector<std::vector<token_t>>& data, 
-                            size_t cluster_limit=512, double fpr=0.005)
+                            size_t cluster_limit=1024, double fpr=0.005)
             : Base(hist, data), 
             cluster_limit_(cluster_limit),  
             hists_(hist), data_(data), indices_(hist.size()),
@@ -68,11 +69,11 @@ namespace ksets {
         }
 
         auto get_candidate_histograms_impl(const std::vector<token_t>& data_row) {
-            //uint16_t threshold =
+            //uint16_t threshold = compute_threshold(thresh_mode_, data_row.size());
             //    static_cast<uint16_t>(data_row.size() * fpr_ + 0.999999);
-            uint16_t threshold =  static_cast<uint16_t>(0.9999 + std::sqrt(data_row.size()) * .8);
-            if (threshold < 2)
-                threshold = 2;
+            uint16_t threshold =  static_cast<uint16_t>(0.9999 + std::sqrt(data_row.size()) * .1);
+            //uint16_t threshold =  static_cast<uint16_t>(0.9999 + std::sqrt(data_row.size()) * 1.0);
+            //uint16_t threshold =  static_cast<uint16_t>(0.9999 + data_row.size() * 0.5);
 
             //return hists_.get_range(cluster_agent_.membership_for(data_row, threshold));
             size_t prev = 0; 
@@ -122,11 +123,17 @@ namespace ksets {
 
         } 
 
+        enum class ThresholdMode {
+            Linear,
+            SqrtLow,
+            SqrtHigh
+        };
 
     private:
         HistogramCollection& hists_;
-        size_t cluster_limit_ = 256;
-        size_t num_partitions_ = 1; 
+        size_t cluster_limit_ = 512;
+        size_t num_partitions_ = 1;
+        ThresholdMode  thresh_mode_ =  ThresholdMode::SqrtLow; 
         const std::vector<std::vector<token_t>>& data_;
         std::vector<size_t> ibf_sizes_;
         std::vector<size_t> indices_;
@@ -150,6 +157,18 @@ namespace ksets {
 
             size_t max_expected = std::ceil(avg_elements * (std::log(static_cast<long double>(hists.size())) + 0.5772156649015328606L)); // Euler-Mascheroni Constant
             return std::max(max_expected, max_elements);
+        }
+
+        inline uint16_t compute_threshold(ThresholdMode mode, size_t n) {
+            switch (mode) {
+                case ThresholdMode::Linear:
+                    return static_cast<uint16_t>(0.9999 + n * 0.5);
+                case ThresholdMode::SqrtLow:
+                    return static_cast<uint16_t>(0.9999 + std::sqrt(n) * 0.1);
+                case ThresholdMode::SqrtHigh:
+                    return static_cast<uint16_t>(0.9999 + std::sqrt(n) * 1.0);
+            }
+            __builtin_unreachable();
         }
 
         std::pair<size_t, size_t> local_cluster(size_t cluster_idx) const {
