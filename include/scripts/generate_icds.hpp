@@ -62,6 +62,26 @@ namespace genicds {
     const double density = 0.0006;
 
 
+    double jaccard_dist_sorted(const std::vector<pcode_t>& a,
+               const std::vector<pcode_t>& b){
+        size_t i = 0, j = 0;
+        size_t intersection = 0;
+
+        while (i < a.size() && j < b.size()) {
+            if (a[i] == b[j]) {
+                ++intersection;
+                ++i; ++j;
+            } else if (a[i] < b[j]) {
+                ++i;
+            } else {
+                ++j;
+            }
+        }
+
+        size_t union_size = a.size() + b.size() - intersection;
+        return union_size ? double(intersection) / union_size : 0.0;
+    }
+
     struct ZipfSampler {
         std::vector<double> cdf;
         uint32_t n;

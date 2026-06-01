@@ -142,6 +142,11 @@ int main(int argc, char ** argv) {
      
     std::vector<genicds::Group> groups;
     std::vector<std::vector<genicds::pcode_t>> rep_members(number_of_clusters);
+    std::vector<size_t> number_members(number_of_clusters,0);
+    std::vector<size_t> inner_jaccard_comps(0,number_of_clusters);
+    std::vector<size_t> outer_jaccard_comps(0,number_of_clusters);
+    std::vector<std::vector<genicds::pcode_t>> rolling_rep(number_of_clusters);
+
     std::vector<std::unordered_map<genicds::pcode_t,size_t>> histograms(number_of_clusters); 
     for(genicds::gcode_t i=0;i<number_of_clusters;i++) {
         groups.push_back({
@@ -159,14 +164,17 @@ int main(int argc, char ** argv) {
     std::ofstream out(prefix  + ".txt");
     std::ofstream rep_out(prefix + ".rep.txt");
     out.rdbuf()->pubsetbuf(nullptr, 1<<20); // 1MB buffer
-
+    std::vector<genicds::pcode_t> pcode_buffer;
+    pcode_buffer.reserve(static_cast<size_t>(sample_length * 1.2));
     for (uint64_t pid = 0; pid < number_of_samples; ++pid) {
 
         auto sample = genicds::generate_patient(groups,rng);
         if (rep_members[sample.primary_g_id].empty())
             rep_members[sample.primary_g_id] = sample.codes;
         //out << '';//pid;
+        number_members[sample.primary_g_id]++;
         bool first = true; 
+        size_t i=0;
         for (auto code : sample.codes){
             if (!first){
                 out << ' ';
@@ -178,9 +186,11 @@ int main(int argc, char ** argv) {
             auto [it, inserted] = histograms[gcode].try_emplace(pcode, 1);
             if (!inserted)
                 ++it->second;
+            i++;
         }
         out << '\n';
     }
+    std::cerr << "Wrote Simulated Data to: " << prefix  << ".txt" << "\n";
     //Output representatives 
     for (auto &rep : rep_members ){
         bool first = true;
@@ -208,5 +218,29 @@ int main(int argc, char ** argv) {
     }
     
     approx_overlaps /= comparisons; 
-    std::cerr << "Observed average overlap (absolute) between clusters: " << approx_overlaps << "\n";   
+    std::cerr << "Observed average overlap (absolute) between clusters: " << approx_overlaps << "\n"; 
+    std::vector<size_t> histogram_sums(number_of_clusters,0);
+    std::vector<size_t> histogram_maxs(number_of_clusters,0);
+    std::vector<size_t> histogram_mins(number_of_clusters, std::numeric_limits<size_t>::max());
+    for (size_t i=0; i < number_of_clusters; ++i ) {
+        for (auto &[pcode, count]: histograms[i]) {
+            histogram_sums[i] += count;
+            if (histogram_maxs[i] < count) 
+                histogram_maxs[i] = count;
+            if (histogram_mins[i] > count) 
+                histogram_mins[i] = count;
+        }
+    }
+    size_t max_sum_cluster = std::distance(histogram_sums.begin(), std::max_element(histogram_sums.begin(), histogram_sums.end()));
+    size_t min_sum_cluster = std::distance(histogram_sums.begin(), std::min_element(histogram_sums.begin(), histogram_sums.end()));
+    std::cout << "Largest Cluster by Sum: [" << max_sum_cluster << "] -> Sum: " 
+              << histogram_sums[max_sum_cluster] 
+              << " Max(val): " <<  histogram_maxs[max_sum_cluster]
+              << " Min(val): " <<  histogram_mins[max_sum_cluster]
+              << "\n" ;
+    std::cout << "Smallest Cluster by Sum: [" << min_sum_cluster << "] -> Sum: " 
+              << histogram_sums[min_sum_cluster] 
+              << " Max(val): " <<  histogram_maxs[min_sum_cluster]
+              << " Min(val): " <<  histogram_mins[min_sum_cluster]
+              << "\n" ; 
 }
