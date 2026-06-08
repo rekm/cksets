@@ -78,6 +78,15 @@ public:
         return sums;
     }
 
+    std::vector<MapVal> maximums() const {
+        std::vector<MapVal> sums;
+        sums.reserve(histograms_.size());
+        for (const auto& h : histograms_) {
+            sums.push_back(h.maximum()); // h.total() sums counts inside that histogram
+        }
+        return sums;
+    }
+
     void get_all(const token_t& token, std::vector<MapVal>& out) const {
         for (auto const& h : histograms_) out.push_back(h.get(token));
     }
