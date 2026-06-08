@@ -1,11 +1,13 @@
 #pragma once
+#include <ksets/preselect/ibf_utils.hpp>
 #include <ksets/clustering/histogram_preselect_policy.hpp>
 #include <ksets/histogram/collection_iterator.hpp>
+#include <ksets/histogram/utils.hpp>
 #include <ksets/types.hpp> // for token_t, move_t
 #include <hibf/interleaved_bloom_filter.hpp> // for bin_index, interleaved_bloom_filter, bin_count, bin_size, hash_...
 #include <hibf/misc/print.hpp>               // for print, print_t
 #include <hibf/misc/bit_vector.hpp>
-#include <hibf/build/bin_size_in_bits.hpp>
+
 #include <ranges>
 #include <numeric>
 #include <vector>
@@ -123,17 +125,13 @@ namespace ksets {
 
         } 
 
-        enum class ThresholdMode {
-            Linear,
-            SqrtLow,
-            SqrtHigh
-        };
+        
 
     private:
         HistogramCollection& hists_;
         size_t cluster_limit_ = 512;
         size_t num_partitions_ = 1;
-        ThresholdMode  thresh_mode_ =  ThresholdMode::SqrtLow; 
+        preselect::StaticThresholdMode  thresh_mode_ =  preselect::StaticThresholdMode::SqrtLow; 
         const std::vector<std::vector<token_t>>& data_;
         std::vector<size_t> ibf_sizes_;
         std::vector<size_t> indices_;
@@ -143,33 +141,9 @@ namespace ksets {
         std::vector<seqan::hibf::interleaved_bloom_filter> ibfs_;
         std::vector<seqan::hibf::interleaved_bloom_filter::membership_agent_type> cluster_agents_;
         
-        static size_t estimate_maxhist_elems(HistogramCollection& hists){
-            size_t max_elements = 1;
-            long double avg_elements = 0.0;
         
-            for (size_t idx=0; idx< hists.size(); idx++) {
-                max_elements = std::max<size_t>(max_elements, hists[idx].size());
-                avg_elements +=  static_cast<long double>(hists[idx].size());
-            }
-            if (hists.size() < 1U)
-                throw std::invalid_argument("Cannot build IBF from empty histogram collection");
-            avg_elements = avg_elements / static_cast<long double>(hists.size());
 
-            size_t max_expected = std::ceil(avg_elements * (std::log(static_cast<long double>(hists.size())) + 0.5772156649015328606L)); // Euler-Mascheroni Constant
-            return std::max(max_expected, max_elements);
-        }
-
-        inline uint16_t compute_threshold(ThresholdMode mode, size_t n) {
-            switch (mode) {
-                case ThresholdMode::Linear:
-                    return static_cast<uint16_t>(0.9999 + n * 0.5);
-                case ThresholdMode::SqrtLow:
-                    return static_cast<uint16_t>(0.9999 + std::sqrt(n) * 0.1);
-                case ThresholdMode::SqrtHigh:
-                    return static_cast<uint16_t>(0.9999 + std::sqrt(n) * 1.0);
-            }
-            __builtin_unreachable();
-        }
+        
 
         std::pair<size_t, size_t> local_cluster(size_t cluster_idx) const {
             return {cluster_idx / cluster_limit_, cluster_idx % cluster_limit_}; 
@@ -178,7 +152,7 @@ namespace ksets {
         static auto make_ibfs(HistogramCollection& hists,
                 const std::vector<size_t> & ibf_sizes, size_t hash_fun_count=3, double fpr=0.01){
 
-              size_t max_elems_expected = estimate_maxhist_elems(hists); 
+              size_t max_elems_expected = histogram::estimate_maxhist_elems(hists); 
               std::vector<seqan::hibf::interleaved_bloom_filter> out;
               size_t num_ibfs = ibf_sizes.size();
               if (num_ibfs < 1U )
@@ -186,10 +160,10 @@ namespace ksets {
               out.reserve(num_ibfs);
               for (size_t i=0; i < num_ibfs; ++i){
                 out.emplace_back(
-                    make_ibf(max_elems_expected, 
-                             ibf_sizes[i], 
-                             hash_fun_count, 
-                             fpr)
+                    preselect::make_ibf(max_elems_expected, 
+                                        ibf_sizes[i], 
+                                        hash_fun_count, 
+                                        fpr)
                     );
               }
 
@@ -198,24 +172,7 @@ namespace ksets {
 
         
 
-        static auto make_ibf(
-                size_t max_elems, 
-                size_t ibf_size, 
-                size_t hash_fun_count=3, 
-                double fpr=0.01){
-
         
-        seqan::hibf::build::bin_size_parameters params{};
-        params.elements   = 4 * max_elems;
-        params.hash_count = hash_fun_count;
-        params.fpr        = fpr;
-
-        return seqan::hibf::interleaved_bloom_filter{
-            seqan::hibf::bin_count{ibf_size},
-            seqan::hibf::bin_size{
-                seqan::hibf::build::bin_size_in_bits(params)},
-            seqan::hibf::hash_function_count{hash_fun_count}};
-        }
     };
 
 } // namespace ksets
