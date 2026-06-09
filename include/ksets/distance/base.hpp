@@ -17,6 +17,10 @@ namespace ksets::distance {
             static_cast<Derived*>(this)->begin_iteration_impl(iter);
         }
 
+        double get(const std::vector<token_t>& token_row, cluster_t label) {
+            return static_cast<Derived*>(this)->get_impl(token_row, label);
+        }
+
         void begin_row() {
             static_cast<Derived*>(this)->begin_row_impl();
         }

@@ -28,6 +28,19 @@ namespace ksets::distance {
                 //dists_.resize(H_.size());
             }
 
+            double get_impl(const std::vector<token_t>& token_row, cluster_t label) {
+                size_t total = hist_sums_[label];
+                auto & hist =  H_[label];
+                size_t miss = 0;
+                size_t tsum = 0;
+                for (auto token: token_row) {
+                    const auto v = hist.get(token);
+                    miss += (v == 0);
+                    tsum += v;
+                }
+                return 1.0 - double(tsum) / (miss + total);
+            }
+
             void begin_row_impl() {
                 //std::fill(miss_.begin(), miss_.end(), 0);
                 //std::fill(tsum_.begin(), tsum_.end(), 0);
