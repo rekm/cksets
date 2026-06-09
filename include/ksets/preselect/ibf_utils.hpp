@@ -1,9 +1,20 @@
 #pragma once 
+#include <ksets/types.hpp>
 #include <hibf/interleaved_bloom_filter.hpp> // for bin_index, interleaved_bloom_filter, bin_count, bin_size, hash_...
 #include <hibf/misc/print.hpp>
 #include <hibf/build/bin_size_in_bits.hpp>
 #include <ksets/distance/jaccard.hpp>   
 namespace ksets::preselect {
+
+    // Forward Declarations 
+    template<class HC, class Distance>
+    class JaccardThresholdPolicy;
+
+
+    template<class HC, class Distance>
+    struct ThresholdPolicyFor; 
+
+    // Implementations 
 
     template<typename Policy>
     struct threshold_policy_traits{
@@ -34,11 +45,11 @@ namespace ksets::preselect {
     template<class HC>
     struct ThresholdPolicyFor<
             HC,
-            JaccardDistance<HC>>{
+            ksets::distance::JaccardDistance<HC>>{
         using type =
             JaccardThresholdPolicy<
             HC,
-            JaccardDistance<HC>>;
+            ksets::distance::JaccardDistance<HC>>;
     }; // Use Dynamic Jaccard For Jaccard Distances 
 
     template<class HC, class Distance>
@@ -46,15 +57,17 @@ namespace ksets::preselect {
         std::vector<uint16_t> threshold_scratch_;
         std::vector<double> constant1_;
         std::vector<double> constant2_;
-        std::vector<size_t> hist_sums;
+        std::vector<hist_count_t> hist_sums;
         HC &hists_;
+        Distance &dist_;
 
         public:
             static constexpr bool enabled = true;
 
-        JaccardThresholdPolicy(HC const& hists,
-                               Distance const& dist) 
-                : hists_(hists) {
+        JaccardThresholdPolicy(HC & hists,
+                               Distance & dist) 
+                : hists_(hists), dist_(dist) {
+                    threshold_scratch_.resize(hists_.size());
                     constant1_.resize(hists_.size());
                     constant2_.resize(hists_.size());
                 }
@@ -62,7 +75,7 @@ namespace ksets::preselect {
         void before_iteration(size_t j) {
             //Precompute constants for taylor approximation of threshold formula
             auto maximums = hists_.maximums(); 
-            hist_sums_ = hists_.totals();
+            hist_sums = hists_.totals();
             for (size_t i=0; i<hists_.size(); i++){
                 constant1_[i] = 1 / maximums[i];
                 constant2_[i] = 1 / (maximums[i] * maximums[i]);
@@ -72,11 +85,11 @@ namespace ksets::preselect {
 
         std::vector<uint16_t> & compute_thresholds(double dist, size_t q_len) {
             for (size_t i=0; i<hists_.size(); i++){
-                threshold_scratch_[i] = (hist_sums_[i] + q_len) * dist * ( constant1_[i] + constant2_[i] * dist); 
+                threshold_scratch_[i] = (hist_sums[i] + q_len) * dist * ( constant1_[i] + constant2_[i] * dist); 
             }
             return threshold_scratch_;
         }
-    } //Dynamic Jaccard Threshold ;
+    }; //Dynamic Jaccard Threshold ;
 
     enum class StaticThresholdMode {
             Linear,
