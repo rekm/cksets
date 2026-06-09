@@ -3,9 +3,10 @@
 #include <ksets/types.hpp>
 #include <iostream>
 
+
 namespace ksets {
 
-    template <typename Derived, class HistogramCollection>
+    template <typename Derived, class HistogramCollection, class Distance>
     class HistogramPreselectPolicy {
         protected:
             HistogramCollection& H_;
@@ -13,16 +14,16 @@ namespace ksets {
             int iteration_ = 0;   
         public:
             HistogramPreselectPolicy(HistogramCollection& h,
-                                const std::vector<std::vector<token_t>>& d)
-                : H_(h), data_(d) {}
+                                const std::vector<std::vector<token_t>>& d, Distance &dist)
+                : H_(h), data_(d), dist_(dist) {}
 
-            void before_iteration(size_t it_idx) {
+            void before_iteration(size_t it_idx, std::vector<label_t>& labels_cur) {
                 iteration_ = it_idx;
-                derived().before_iteration_impl(it_idx);
+                derived().before_iteration_impl(it_idx, labels_cur);
             }
 
-            auto get_candidate_histograms(const std::vector<token_t>& data_row) {
-                return derived().get_candidate_histograms_impl(data_row);
+            auto get_candidate_histograms(const std::vector<token_t>& data_row, size_t row_idx) {
+                return derived().get_candidate_histograms_impl(data_row, row_idx);
             }
 
             void update(std::vector<label_t>& labels_cur) {
@@ -30,6 +31,7 @@ namespace ksets {
             }
             
         private:
+            Distance& dist_; 
             Derived& derived() { return static_cast<Derived&>(*this); }
             const Derived& derived() const { return static_cast<const Derived&>(*this); }
     };

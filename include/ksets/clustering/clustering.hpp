@@ -167,7 +167,7 @@ HistogramStats compute_hist_stats(const auto& histograms) {
 
 template <class HistogramCollection, 
           template<class> class HistogramUpdatePolicy,
-          template<class> class HistogramPreselectPolicy,
+          template<class, class> class HistogramPreselectPolicy,
           template<class> class DistancePolicy = distance::JaccardDistance,
           class EmptyClusterPolicy = EmptyClusterKeep,
           telemetry::TelemetrySink Sink = telemetry::NullSink>
@@ -201,21 +201,26 @@ ClusterResult cluster_cpp(
     std::vector<label_t> labels_prev(data.size());
     std::mt19937_64 rng(seed);
     
-    // Build initial histograms if not provided 
+    // Randomly assign labels
     auto randomizer = ksets::hashing::MurmurHash(seed);
+    std::vector<size_t> indices(data.size());
+    std::iota(indices.begin(), indices.end(), size_t{});
+    std::shuffle(indices.begin(), indices.end(), rng);
+    for (size_t j = 0; j < data.size(); j++){
+        labels_cur[j] = indices[j] % K;
+    }
+    // Build initial histograms if not provided 
     if (! histograms_provided){
-        std::vector<size_t> indices(data.size());
-        std::iota(indices.begin(), indices.end(), size_t{});
-        std::shuffle(indices.begin(), indices.end(), rng);
         for (cluster_t i = 0; i < K; i++) {
             size_t index = indices[i];
+            labels_cur[index] = i; 
             for (auto const& token : data[index]) {
                 histograms.increment(i, token);
             }
         }
         histograms_provided = true; 
     }
-    HistogramPreselectPolicy<HistogramCollection> histPreselector(histograms, data);
+    HistogramPreselectPolicy<HistogramCollection, decltype(distance)> histPreselector(histograms, data, distance);
     HistogramUpdatePolicy<HistogramCollection> histUpdater(histograms, data, histograms_provided);
     EmptyClusterPolicy emptyClusterFix(labels_cur, K);
 
@@ -236,8 +241,8 @@ ClusterResult cluster_cpp(
     //Main Loop
     while ((std::abs(sdth_old - sdth) > 0.00001 ) && (j < max_iter)){
         histUpdater.before_iteration(j);
-        histPreselector.before_iteration(j);
         distance.begin_iteration(j);
+        histPreselector.before_iteration(j, labels_cur);
         emptyClusterFix.begin_iteration(j);
         sdth_old = sdth;
         labels_prev = labels_cur;
@@ -253,7 +258,7 @@ ClusterResult cluster_cpp(
             label_t best_cluster; 
             label_t curr_cluster = labels_cur[i];
             size_t num_tokens = data[i].size();
-            auto histRange = histPreselector.get_candidate_histograms(data[i]);
+            auto histRange = histPreselector.get_candidate_histograms(data[i], i);
             // Telemetry for savings using preselect strategy
             
             total_hists_touched += uint64_t(histRange.size()) * uint64_t(num_tokens);

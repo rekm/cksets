@@ -19,19 +19,20 @@ namespace ksets {
 
     
 
-    template <typename HistogramCollection>
+    template <typename HistogramCollection, typename Distance>
     class HistPreselectIBFPartitioned
-        : public HistogramPreselectPolicy<HistPreselectIBFPartitioned<HistogramCollection>, HistogramCollection>
+        : public HistogramPreselectPolicy<HistPreselectIBFPartitioned<HistogramCollection, Distance>, HistogramCollection, Distance>
     {
     public:
-        using Base = HistogramPreselectPolicy<HistPreselectIBFPartitioned<HistogramCollection>,
-                            HistogramCollection>;
+        using Base = HistogramPreselectPolicy<HistPreselectIBFPartitioned<HistogramCollection, Distance>,
+                            HistogramCollection, Distance>;
         using Base::Base;
         
         explicit HistPreselectIBFPartitioned(HistogramCollection& hist,
                             const std::vector<std::vector<token_t>>& data, 
+                            Distance &dist, 
                             size_t cluster_limit=1024, double fpr=0.005)
-            : Base(hist, data), 
+            : Base(hist, data, dist), 
             cluster_limit_(cluster_limit),  
             hists_(hist), data_(data), indices_(hist.size()),
             fpr_(fpr)
@@ -55,7 +56,7 @@ namespace ksets {
                 cluster_agents_[i] = ibfs_[i].membership_agent();
         }
 
-        __attribute__((noinline)) void before_iteration_impl(size_t it_idx) {
+        __attribute__((noinline)) void before_iteration_impl(size_t it_idx, std::vector<label_t>& labels_cur) {
             if(it_idx == 0){
                 for (size_t i = 0; i < hists_.size(); ++i) {
                     auto coords = local_cluster(i);
@@ -70,7 +71,7 @@ namespace ksets {
             }
         }
 
-        auto get_candidate_histograms_impl(const std::vector<token_t>& data_row) {
+        auto get_candidate_histograms_impl(const std::vector<token_t>& data_row, size_t row_idx) {
             //uint16_t threshold = compute_threshold(thresh_mode_, data_row.size());
             //    static_cast<uint16_t>(data_row.size() * fpr_ + 0.999999);
             uint16_t threshold =  static_cast<uint16_t>(0.9999 + std::sqrt(data_row.size()) * .1);

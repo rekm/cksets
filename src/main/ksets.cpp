@@ -251,7 +251,7 @@ int main(int argc, char ** argv)
             r = ksets::cluster_cpp<
                 decltype(hist_collection), 
                 ksets::HistUpdaterMemorizeChanges,
-                ksets::HistPreselectIBFPartitioned
+                ksets::HistPreselectIBF//Partitioned
                 >(data, number_of_clusters, max_hist_length, hist_collection, max_iter, seed, cerr_sink);
         }
     } else if (hist_rebuild == "full"){
@@ -265,7 +265,7 @@ int main(int argc, char ** argv)
             r = ksets::cluster_cpp<
                 decltype(hist_collection), 
                 ksets::HistUpdaterKsetsAuthors,
-                ksets::HistPreselectIBFPartitioned
+                ksets::HistPreselectIBF//Partitioned
                 >(data, number_of_clusters, max_hist_length, hist_collection, max_iter, seed, cerr_sink);
         }
     } else {

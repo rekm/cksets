@@ -6,25 +6,25 @@
 
 namespace ksets {
 
-    template <typename HistogramCollection>
+    template <typename HistogramCollection, typename Distance>
     class HistPreselectNothing
-        : public HistogramPreselectPolicy<HistPreselectNothing<HistogramCollection>, HistogramCollection>
+        : public HistogramPreselectPolicy<HistPreselectNothing<HistogramCollection, Distance>, HistogramCollection, Distance>
     {
     public:
-        using Base = HistogramPreselectPolicy<HistPreselectNothing<HistogramCollection>,
-                            HistogramCollection>;
+        using Base = HistogramPreselectPolicy<HistPreselectNothing<HistogramCollection, Distance>,
+                            HistogramCollection, Distance>;
         using Base::Base;
         
         explicit HistPreselectNothing(HistogramCollection& hist,
-                            const std::vector<std::vector<token_t>>& data)
-            : Base(hist, data),  
+                            const std::vector<std::vector<token_t>>& data, Distance &dist)
+            : Base(hist, data, dist),  
             hists_(hist), data_(data), indices_(hist.size())
         {
             std::iota(indices_.begin(), indices_.end(), 0);
         }
-        void before_iteration_impl(size_t it_idx) {}
+        void before_iteration_impl(size_t it_idx, std::vector<label_t>& labels_cur) {}
 
-        auto get_candidate_histograms_impl(const std::vector<token_t>& data_row) {
+        auto get_candidate_histograms_impl(const std::vector<token_t>& data_row, size_t row_idx) {
             return hists_.get_range(indices_);
         }
 

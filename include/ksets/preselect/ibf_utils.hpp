@@ -77,8 +77,9 @@ namespace ksets::preselect {
             auto maximums = hists_.maximums(); 
             hist_sums = hists_.totals();
             for (size_t i=0; i<hists_.size(); i++){
-                constant1_[i] = 1 / maximums[i];
-                constant2_[i] = 1 / (maximums[i] * maximums[i]);
+                double m = static_cast<double>(maximums[i]);
+                constant1_[i] = 1.0 / m;
+                constant2_[i] = 1.0 / (m * m);
             }
 
         }
