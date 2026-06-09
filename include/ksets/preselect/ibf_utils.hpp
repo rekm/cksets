@@ -79,14 +79,15 @@ namespace ksets::preselect {
             for (size_t i=0; i<hists_.size(); i++){
                 double m = static_cast<double>(maximums[i]);
                 constant1_[i] = 1.0 / m;
-                constant2_[i] = 1.0 / (m * m);
+                constant2_[i] = -1.0 / (m * m);
             }
 
         }
 
         std::vector<uint16_t> & compute_thresholds(double dist, size_t q_len) {
+            double alpha = 1.0 - dist;
             for (size_t i=0; i<hists_.size(); i++){
-                threshold_scratch_[i] = (hist_sums[i] + q_len) * dist * ( constant1_[i] + constant2_[i] * dist); 
+                threshold_scratch_[i] = (hist_sums[i] + q_len) * alpha * ( constant1_[i] + constant2_[i] * alpha); 
             }
             return threshold_scratch_;
         }
