@@ -5,10 +5,7 @@
 #include <ksets/preselect/ibf_utils.hpp>
 #include <ksets/types.hpp> // for token_t, move_t
 #include <hibf/interleaved_bloom_filter.hpp> // for bin_index, interleaved_bloom_filter, bin_count, bin_size, hash_...
-#include <hibf/misc/print.hpp>               // for print, print_t
-#include <hibf/misc/bit_vector.hpp>
-#include <hibf/build/bin_size_in_bits.hpp>
-#include <ranges>
+
 #include <numeric>
 #include <vector>
 #include <algorithm>
@@ -60,7 +57,7 @@ namespace ksets {
             std::iota(fallback_indices_.begin(), fallback_indices_.end(), 0);
             all_bins_.reserve(ibf_.bin_count());
             if constexpr (dynamic_threshold_)
-                precomputed_distances_.reserve(data_.size());
+                precomputed_distances_.resize(data_.size());
             for (size_t i = 0; i < ibf_.bin_count(); ++i)
                 all_bins_.push_back(seqan::hibf::bin_index{i});
             refresh_agent();
@@ -88,9 +85,13 @@ namespace ksets {
             //    static_cast<uint16_t>(data_row.size() * fpr_ + 0.999999);
             if constexpr (dynamic_threshold_)
             {
+                //possibly need to check if the largest possible distance is smaller than dist for any 
+                //of  the returned counts. 
                 dist_base_t dist = precomputed_distances_[row_idx];
-                auto const& thresholds = threshold_policy_.compute_thresholds(dist, data_row.size());
-                membership_with_dynamic_threshold(data_row, thresholds);
+                auto const& thresholds = threshold_policy_.compute_min_thresholds(dist, data_row.size());
+                preselect::membership_with_dynamic_min_threshold(data_row, indices_, thresholds, cluster_agent_);
+                if (indices_.empty())
+                    indices_.assign(fallback_indices_.begin(), fallback_indices_.end());
                 // Code using ibf_.counting_agent() and storing the index results in res buffer 
             }
             else
@@ -114,21 +115,7 @@ namespace ksets {
             //return hists_.get_range(res);
         }
 
-        template <std::ranges::forward_range value_range_t>
-        void membership_with_dynamic_threshold(value_range_t && values,
-                                                                   std::vector<uint16_t> const &thresholds) & noexcept {
-            indices_.clear();
-            auto & counts_per_bin = cluster_agent_.bulk_count(std::forward<value_range_t>(values));
- 
-            if (indices_.capacity() < counts_per_bin.size())
-                seqan::hibf::unreachable();
- 
-            for (auto [bin, count] : seqan::stl::views::enumerate(counts_per_bin))
-                if (count >= thresholds[bin])
-                    indices_.emplace_back(bin);
-            if (indices_.empty())
-                    indices_.assign(fallback_indices_.begin(), fallback_indices_.end());
-        }
+        
 
         void update_impl(std::vector<label_t>& labels_cur) {
             ibf_.clear(all_bins_);

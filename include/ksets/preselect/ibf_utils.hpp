@@ -3,7 +3,10 @@
 #include <hibf/interleaved_bloom_filter.hpp> // for bin_index, interleaved_bloom_filter, bin_count, bin_size, hash_...
 #include <hibf/misc/print.hpp>
 #include <hibf/build/bin_size_in_bits.hpp>
-#include <ksets/distance/jaccard.hpp>   
+#include <ksets/distance/jaccard.hpp>
+
+
+#include <ranges>
 namespace ksets::preselect {
 
     // Forward Declarations 
@@ -55,8 +58,10 @@ namespace ksets::preselect {
     template<class HC, class Distance>
     class JaccardThresholdPolicy{
         std::vector<uint16_t> threshold_scratch_;
-        std::vector<double> constant1_;
-        std::vector<double> constant2_;
+        std::vector<double> min_constant1_;
+        std::vector<double> min_constant2_;
+        std::vector<double> max_constant1_;
+        std::vector<double> max_constant2_;
         std::vector<hist_count_t> hist_sums;
         HC &hists_;
         Distance &dist_;
@@ -68,48 +73,46 @@ namespace ksets::preselect {
                                Distance & dist) 
                 : hists_(hists), dist_(dist) {
                     threshold_scratch_.resize(hists_.size());
-                    constant1_.resize(hists_.size());
-                    constant2_.resize(hists_.size());
+                    min_constant1_.resize(hists_.size());
+                    min_constant2_.resize(hists_.size());
+                    max_constant1_.resize(hists_.size());
+                    max_constant2_.resize(hists_.size());
                 }
 
         void before_iteration(size_t j) {
             //Precompute constants for taylor approximation of threshold formula
             auto maximums = hists_.maximums(); 
+            auto minimums = hists_.minimums();
             hist_sums = hists_.totals();
             for (size_t i=0; i<hists_.size(); i++){
                 double m = static_cast<double>(maximums[i]);
-                constant1_[i] = 1.0 / m;
-                constant2_[i] = -1.0 / (m * m);
+                double m2 = static_cast<double>(minimums[i]);
+                min_constant1_[i] = 1.0 / m;
+                min_constant2_[i] = -1.0 / (m * m);
+                max_constant1_[i] = 1.0 / m2;
+                max_constant2_[i] = -1.0 / (m2 * m2);
             }
 
         }
 
-        std::vector<uint16_t> & compute_thresholds(double dist, size_t q_len) {
+        std::vector<uint16_t> & compute_min_thresholds(double dist, size_t q_len) {
             double alpha = 1.0 - dist;
             for (size_t i=0; i<hists_.size(); i++){
-                threshold_scratch_[i] = (hist_sums[i] + q_len) * alpha * ( constant1_[i] + constant2_[i] * alpha); 
+                threshold_scratch_[i] = (hist_sums[i] + q_len) * alpha * ( min_constant1_[i] + min_constant2_[i] * alpha); 
+            }
+            return threshold_scratch_;
+        }
+
+        std::vector<uint16_t> & compute_max_thresholds(double dist, size_t q_len) {
+            double alpha = 1.0 - dist;
+            for (size_t i=0; i<hists_.size(); i++){
+                threshold_scratch_[i] = (hist_sums[i] + q_len) * alpha * ( max_constant1_[i] + max_constant2_[i] * alpha); 
             }
             return threshold_scratch_;
         }
     }; //Dynamic Jaccard Threshold ;
 
-    enum class StaticThresholdMode {
-            Linear,
-            SqrtLow,
-            SqrtHigh
-    };
-
-    inline uint16_t compute_static_threshold(StaticThresholdMode mode, size_t n) {
-            switch (mode) {
-                case StaticThresholdMode::Linear:
-                    return static_cast<uint16_t>(0.9999 + n * 0.5);
-                case StaticThresholdMode::SqrtLow:
-                    return static_cast<uint16_t>(0.9999 + std::sqrt(n) * 0.1);
-                case StaticThresholdMode::SqrtHigh:
-                    return static_cast<uint16_t>(0.9999 + std::sqrt(n) * 1.0);
-            }
-            __builtin_unreachable();
-    }
+    
 
     static auto make_ibf(
                 size_t max_elems, 
@@ -128,4 +131,58 @@ namespace ksets::preselect {
             seqan::hibf::hash_function_count{hash_fun_count}};
     } // make_ibf 
 
+    template <std::ranges::forward_range value_range_t, typename IBFAgent>
+    void membership_with_dynamic_min_threshold(value_range_t && values,
+                                               std::vector<size_t> &out,
+                                               std::vector<uint16_t> const &thresholds,
+                                               IBFAgent &count_agent) {
+        out.clear();
+        auto & counts_per_bin = count_agent.bulk_count(std::forward<value_range_t>(values));
+        assert(thresholds.size() == counts_per_bin.size()); 
+                                             
+        if (out.capacity() < counts_per_bin.size())
+            seqan::hibf::unreachable();
+
+        for (auto [bin, count] : seqan::stl::views::enumerate(counts_per_bin))
+            if (count >= thresholds[bin])
+                out.emplace_back(bin);
+        
+    }
+
+    template <std::ranges::forward_range value_range_t, typename IBFAgent>
+    void membership_with_dynamic_max_threshold(value_range_t && values,
+                                               std::vector<size_t> &out,
+                                               std::vector<uint16_t> const &thresholds,
+                                               IBFAgent &count_agent) {
+        out.clear();
+        auto & counts_per_bin = count_agent.bulk_count(std::forward<value_range_t>(values));
+        assert(thresholds.size() == counts_per_bin.size()); 
+                                             
+        if (out.capacity() < counts_per_bin.size())
+            seqan::hibf::unreachable();
+
+        for (auto [bin, count] : seqan::stl::views::enumerate(counts_per_bin))
+            if (count < thresholds[bin])
+                out.emplace_back(bin);
+        
+    }
+
+
+    enum class StaticThresholdMode {
+            Linear,
+            SqrtLow,
+            SqrtHigh
+    };
+
+    inline uint16_t compute_static_threshold(StaticThresholdMode mode, size_t n) {
+            switch (mode) {
+                case StaticThresholdMode::Linear:
+                    return static_cast<uint16_t>(0.9999 + n * 0.5);
+                case StaticThresholdMode::SqrtLow:
+                    return static_cast<uint16_t>(0.9999 + std::sqrt(n) * 0.1);
+                case StaticThresholdMode::SqrtHigh:
+                    return static_cast<uint16_t>(0.9999 + std::sqrt(n) * 1.0);
+            }
+            __builtin_unreachable();
+    }
 } // ksets::preselect
