@@ -87,6 +87,15 @@ public:
         return sums;
     }
 
+    std::vector<MapVal> minimums() const {
+        std::vector<MapVal> mins;
+        mins.reserve(histograms_.size());
+        for (const auto& h : histograms_) {
+            mins.push_back(h.minimum());
+        }
+        return mins;
+    }
+
     void get_all(const token_t& token, std::vector<MapVal>& out) const {
         for (auto const& h : histograms_) out.push_back(h.get(token));
     }

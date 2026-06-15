@@ -116,6 +116,16 @@ public:
         return (it == freq.end()) ? hist_count_t{} : it->second;
     }
 
+    hist_count_t minimum() const {
+        auto it = std::min_element(
+                freq.begin(), freq.end(),
+                [](const auto& a, const auto& b) {
+                    return a.second > b.second;
+                }
+            );
+        return (it == freq.end()) ? hist_count_t{} : it->second;
+    }
+
     const MapType& expose_map() const {
         return freq;
     }
