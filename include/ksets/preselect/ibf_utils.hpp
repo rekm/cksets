@@ -98,7 +98,11 @@ namespace ksets::preselect {
             auto const &hist_sums = hists_.totals();
             double alpha = 1.0 - dist;
             for (size_t i=0; i<hists_.size(); i++){
-                threshold_scratch_[i] = (hist_sums[i] + q_len) * alpha * ( min_constant1_[i] + min_constant2_[i] * alpha); 
+                if (hist_sums[i] == 0) {
+                    threshold_scratch_[i] = std::numeric_limits<uint16_t>::max(); 
+                } else {
+                    threshold_scratch_[i] = (hist_sums[i] + q_len) * alpha * ( min_constant1_[i] + min_constant2_[i] * alpha); 
+                }
             }
             return threshold_scratch_;
         }
@@ -107,7 +111,12 @@ namespace ksets::preselect {
             auto const &hist_sums = hists_.totals();
             double alpha = 1.0 - dist;
             for (size_t i=0; i<hists_.size(); i++){
-                threshold_scratch_[i] = (hist_sums[i] + q_len) * alpha * ( max_constant1_[i] + max_constant2_[i] * alpha); 
+                if (hist_sums[i] == 0) {
+                    threshold_scratch_[i] = std::numeric_limits<uint16_t>::max();   
+                } else {
+                    threshold_scratch_[i] = (hist_sums[i] + q_len) * alpha * ( max_constant1_[i] + max_constant2_[i] * alpha);
+                }
+                 
             }
             return threshold_scratch_;
         }
@@ -187,11 +196,11 @@ namespace ksets::preselect {
     }
 
     template <std::ranges::forward_range value_range_t, typename IBFAgent>
-    size_t estimate_best_cluster(value_range_t && values,
-                               std::vector<size_t> &min_counts,
+    label_t estimate_best_cluster(value_range_t && values,
+                               const std::vector<hist_count_t> &min_counts,
                                IBFAgent &count_agent) {
         size_t best_val = 0;
-        size_t best_cluster = 0;
+        label_t best_cluster = 0;
         auto & counts_per_bin = count_agent.bulk_count(std::forward<value_range_t>(values));
         assert(min_counts.size() == counts_per_bin.size()); 
         size_t curr_val = 0; 
