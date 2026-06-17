@@ -177,7 +177,7 @@ TEST_F(test_distance, paper_test_singular_get)
 
 TEST_F(test_distance_threshold, paper_test_threshold_calc)
 {
-    uint number_of_clusters{2};
+    uint number_of_clusters{3};
     auto hash_policy = ksets::hashing::HashPolicy(ksets::hashing::MurmurHash(42));
     ksets::histogram::MapHistogramCollection hist_collection(number_of_clusters, hash_policy);
     ksets::distance::JaccardDistance dist(hist_collection);
