@@ -221,6 +221,12 @@ ClusterResult cluster_cpp(
         histograms_provided = true; 
     }
     HistogramPreselectPolicy<HistogramCollection, decltype(distance)> histPreselector(histograms, data, distance);
+    if constexpr (SupportsQuickLabelEstimate<decltype(histPreselector)>){
+        for (size_t i=0; i<data.size(); i++){
+            labels_cur[i] = histPreselector.estimate_best_cluster(data[i]);
+        }
+
+    }
     HistogramUpdatePolicy<HistogramCollection> histUpdater(histograms, data, histograms_provided);
     EmptyClusterPolicy emptyClusterFix(labels_cur, K);
 

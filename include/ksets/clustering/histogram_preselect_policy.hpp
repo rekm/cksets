@@ -6,6 +6,13 @@
 
 namespace ksets {
 
+    template<class T>
+    concept SupportsQuickLabelEstimate =
+    requires(T t, std::vector<token_t> const& row)
+    {
+        { t.estimate_best_cluster(row) } -> std::convertible_to<label_t>;
+    };
+
     template <typename Derived, class HistogramCollection, class Distance>
     class HistogramPreselectPolicy {
         protected:
@@ -29,9 +36,10 @@ namespace ksets {
             void update(std::vector<label_t>& labels_cur) {
                 derived().update_impl(labels_cur);
             }
-            
-        private:
+        protected:
             Distance& dist_; 
+        private:
+            
             Derived& derived() { return static_cast<Derived&>(*this); }
             const Derived& derived() const { return static_cast<const Derived&>(*this); }
     };
