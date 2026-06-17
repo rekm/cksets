@@ -9,11 +9,17 @@
 #include <ksets/distance/jaccard.hpp>
 #include <ksets/hashing/murmur_hash.hpp>
 #include <ksets/histogram/collection_map.hpp>
+#include <ksets/preselect/ibf_utils.hpp>
+
+#include <iostream>
 
 struct test_histogram : public app_test
 {};
 
 struct test_distance : public app_test
+{};
+
+struct test_distance_threshold : public app_test
 {};
 
 TEST_F(test_histogram, histogram_store_and__simple_retrieval){
@@ -53,6 +59,27 @@ TEST_F(test_histogram, histogram_store_and__hash_retrieval){
 
 }
 
+TEST_F(test_histogram, minimums_and_maximums){
+    uint number_of_clusters{2};
+    auto hash_policy = ksets::hashing::HashPolicy(ksets::hashing::MurmurHash(42));
+    ksets::histogram::MapHistogramCollection hist_collection(number_of_clusters, hash_policy);
+    ksets::distance::JaccardDistance dist(hist_collection);
+    std::vector<unsigned> hist1_paper = {5, 5, 4, 2, 1, 1, 1, 1, 1, 1};
+    for (size_t i = 0; i < hist1_paper.size(); ++i)
+        hist_collection[0].set(i + 1, hist1_paper[i]);
+    hist_collection[0].debug_print();
+    std::vector<unsigned> hist2_paper = {1, 1, 1, 1, 1, 3, 2, 4, 5, 3, 1};
+    for (size_t i = 0; i < hist2_paper.size(); ++i)
+        hist_collection[1].set(i + 1, hist2_paper[i]);
+    hist_collection[1].debug_print();
+    auto  mins = hist_collection.minimums();
+    EXPECT_EQ(mins[0], 1);
+    EXPECT_EQ(mins[1], 1);
+    auto  maxs = hist_collection.maximums();
+    EXPECT_EQ(maxs[0], 5);
+    EXPECT_EQ(maxs[1], 5);
+
+}
 
 
 
@@ -145,4 +172,61 @@ TEST_F(test_distance, paper_test_singular_get)
     std::vector<ksets::token_t> row2 = {1, 5, 2, 11, 12}; // A, E, B, K, L
     EXPECT_NEAR(dist.get(row2, 0), 0.5416, 1e-4); // In the paper the example misses the subtraction by 1
     EXPECT_NEAR(dist.get(row2, 1), 0.8333, 1e-4);
+}
+
+
+TEST_F(test_distance_threshold, paper_test_threshold_calc)
+{
+    uint number_of_clusters{2};
+    auto hash_policy = ksets::hashing::HashPolicy(ksets::hashing::MurmurHash(42));
+    ksets::histogram::MapHistogramCollection hist_collection(number_of_clusters, hash_policy);
+    ksets::distance::JaccardDistance dist(hist_collection);
+    std::vector<ksets::token_t> hist1_paper = {5, 5, 4, 2, 1, 1, 1, 1, 1, 1};
+    for (size_t i = 0; i < hist1_paper.size(); ++i)
+        hist_collection[0].set(i + 1, hist1_paper[i]);
+    hist_collection[0].debug_print();
+    std::vector<ksets::token_t> hist2_paper = {1, 1, 1, 1, 1, 3, 2, 4, 5, 3, 1};
+    for (size_t i = 0; i < hist2_paper.size(); ++i)
+        hist_collection[1].set(i + 1, hist2_paper[i]);
+    hist_collection[1].debug_print();
+    std::vector<std::vector<ksets::token_t>> data = {
+        {1, 5, 2, 3, 6}, 
+        {1, 5, 2, 11, 12}
+    };
+    
+    ksets::preselect::JaccardThresholdPolicy threshold(hist_collection, dist);
+    dist.begin_iteration(0);
+    std::vector<ksets::label_t> labels_cur = {1,1};
+    std::vector<double> precomputed_distances = {1.0, 1.0};
+    for (size_t i=0; i<data.size(); i++ ){
+        precomputed_distances[i] = dist.get(data[i], labels_cur[i]);
+    }
+    threshold.before_iteration(0);
+    
+    for (size_t i=0; i<data.size(); i++){
+        auto const& thresholds = threshold.compute_min_thresholds(precomputed_distances[i], data[i].size());
+        std::cerr << "Min Threshold Values for row" << i << ":"; 
+        for (auto val: thresholds){
+            std::cerr << " " << val; 
+        }
+        std::cerr << "\n";
+    }
+
+    for (size_t i=0; i<data.size(); i++){
+        auto const& thresholds = threshold.compute_max_thresholds(precomputed_distances[i], data[i].size());
+        std::cerr << "Max Threshold Values for row " << i << ":"; 
+        for (auto val: thresholds){
+            std::cerr << " " << val; 
+        }
+        std::cerr << "\n";
+    }
+    
+    
+    EXPECT_EQ(true, true);
+     // A, E, B, C, F
+    //EXPECT_NEAR(dist.get(data[0], 0), 0.2727, 1e-4);
+    //EXPECT_NEAR(dist.get(data[0], 1), 0.6956, 1e-4);
+    // A, E, B, K, L
+    //EXPECT_NEAR(dist.get(data[1], 0), 0.5416, 1e-4); // In the paper the example misses the subtraction by 1
+    //EXPECT_NEAR(dist.get(data[1], 1), 0.8333, 1e-4);
 }
