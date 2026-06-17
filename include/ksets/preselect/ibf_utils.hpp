@@ -62,7 +62,6 @@ namespace ksets::preselect {
         std::vector<double> min_constant2_;
         std::vector<double> max_constant1_;
         std::vector<double> max_constant2_;
-        std::vector<hist_count_t> hist_sums;
         HC &hists_;
         Distance &dist_;
 
@@ -81,9 +80,9 @@ namespace ksets::preselect {
 
         void before_iteration(size_t j) {
             //Precompute constants for taylor approximation of threshold formula
-            auto maximums = hists_.maximums(); 
-            auto minimums = hists_.minimums();
-            hist_sums = hists_.totals();
+            auto const& maximums = hists_.maximums(); 
+            auto const& minimums = hists_.minimums();
+            auto const&hist_sums = hists_.totals();
             for (size_t i=0; i<hists_.size(); i++){
                 double m = static_cast<double>(maximums[i]);
                 double m2 = static_cast<double>(minimums[i]);
@@ -96,6 +95,7 @@ namespace ksets::preselect {
         }
 
         std::vector<uint16_t> & compute_min_thresholds(double dist, size_t q_len) {
+            auto const &hist_sums = hists_.totals();
             double alpha = 1.0 - dist;
             for (size_t i=0; i<hists_.size(); i++){
                 threshold_scratch_[i] = (hist_sums[i] + q_len) * alpha * ( min_constant1_[i] + min_constant2_[i] * alpha); 
@@ -104,6 +104,7 @@ namespace ksets::preselect {
         }
 
         std::vector<uint16_t> & compute_max_thresholds(double dist, size_t q_len) {
+            auto const &hist_sums = hists_.totals();
             double alpha = 1.0 - dist;
             for (size_t i=0; i<hists_.size(); i++){
                 threshold_scratch_[i] = (hist_sums[i] + q_len) * alpha * ( max_constant1_[i] + max_constant2_[i] * alpha); 
@@ -150,6 +151,24 @@ namespace ksets::preselect {
     }
 
     template <std::ranges::forward_range value_range_t, typename IBFAgent>
+    void membership_with_static_min_threshold(value_range_t && values,
+                                               std::vector<size_t> &out,
+                                               uint16_t const threshold,
+                                               IBFAgent &count_agent) {
+        out.clear();
+        auto & counts_per_bin = count_agent.bulk_count(std::forward<value_range_t>(values));
+        assert(values.size() == counts_per_bin.size()); 
+                                             
+        if (out.capacity() < counts_per_bin.size())
+            seqan::hibf::unreachable();
+
+        for (auto [bin, count] : seqan::stl::views::enumerate(counts_per_bin))
+            if (count >= threshold)
+                out.emplace_back(bin);
+        
+    }
+
+    template <std::ranges::forward_range value_range_t, typename IBFAgent>
     void membership_with_dynamic_max_threshold(value_range_t && values,
                                                std::vector<size_t> &out,
                                                std::vector<uint16_t> const &thresholds,
@@ -162,9 +181,28 @@ namespace ksets::preselect {
             seqan::hibf::unreachable();
 
         for (auto [bin, count] : seqan::stl::views::enumerate(counts_per_bin))
-            if (count < thresholds[bin])
+            if (count > thresholds[bin])
                 out.emplace_back(bin);
         
+    }
+
+    template <std::ranges::forward_range value_range_t, typename IBFAgent>
+    size_t estimate_best_cluster(value_range_t && values,
+                               std::vector<size_t> &min_counts,
+                               IBFAgent &count_agent) {
+        size_t best_val = 0;
+        size_t best_cluster = 0;
+        auto & counts_per_bin = count_agent.bulk_count(std::forward<value_range_t>(values));
+        assert(min_counts.size() == counts_per_bin.size()); 
+        size_t curr_val = 0; 
+        for (auto [bin, count] : seqan::stl::views::enumerate(counts_per_bin)){
+            curr_val = count * min_counts[bin];
+            if (curr_val > best_val){
+                best_cluster = bin;
+                best_val = curr_val;
+            } 
+        }
+        return best_cluster;
     }
 
 

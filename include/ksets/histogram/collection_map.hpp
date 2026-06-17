@@ -22,21 +22,31 @@ class MapHistogramCollection
     size_t K_;
     HashPolicy hash_;
     AllocatorPolicy alloc_;
+    mutable std::vector<MapVal> totals_; 
+    mutable std::vector<MapVal> mins_;
+    mutable std::vector<MapVal> maxs_;
+    //cache_flags 
+    mutable bool dirty_totals_ = true;
+    mutable bool dirty_mins_ = true;
+    mutable bool dirty_maxs_ = true;
     //mutable std::vector<size_t> row_hashes_;
 
 public:
     
     explicit MapHistogramCollection(size_t K, HashPolicy hash = {}, AllocatorPolicy alloc = {})
-        : histograms_(K, MapHistType(hash, alloc)), K_(K), alloc_(alloc), hash_(hash) {}
+        : histograms_(K, MapHistType(hash, alloc)), K_(K), alloc_(alloc), hash_(hash), totals_(K),
+          mins_(K), maxs_(K) {}
 
     MapHistType& operator[](size_t i) { return histograms_[i]; }
     const MapHistType& operator[](size_t i) const { return histograms_[i]; }
 
     bool increment(size_t cluster, const token_t& token) {
+        invalidate_cache();
         return histograms_[cluster].increment(token);
     }
 
     bool decrement(size_t cluster, const token_t& token) {
+        invalidate_cache();
         return histograms_[cluster].decrement(token);
     }
 
@@ -57,6 +67,7 @@ public:
         for (auto& h : histograms_) {
             h.clear();
         }
+        invalidate_cache();
     }
 
     MapVal get(size_t cluster, const token_t& token) const {
@@ -67,33 +78,35 @@ public:
         for (auto& h : histograms_) {
             h.zero_out();
         }
+        invalidate_cache();
     }
 
-    std::vector<MapVal> totals() const {
-        std::vector<MapVal> sums;
-        sums.reserve(histograms_.size());
-        for (const auto& h : histograms_) {
-            sums.push_back(h.total()); // h.total() sums counts inside that histogram
+
+    const std::vector<MapVal> & totals() const {
+        if (dirty_totals_){ 
+            for (size_t i=0; i < K_; i++) 
+                totals_[i] = histograms_[i].total();
+            dirty_totals_ = false; 
         }
-        return sums;
+        return totals_;
     }
 
-    std::vector<MapVal> maximums() const {
-        std::vector<MapVal> sums;
-        sums.reserve(histograms_.size());
-        for (const auto& h : histograms_) {
-            sums.push_back(h.maximum()); // h.total() sums counts inside that histogram
+    const std::vector<MapVal> & maximums() const {
+        if (dirty_maxs_){ 
+            for (size_t i=0; i < K_; i++) 
+                maxs_[i] = histograms_[i].maximum();
+            dirty_maxs_ = false; 
         }
-        return sums;
+        return maxs_;
     }
 
-    std::vector<MapVal> minimums() const {
-        std::vector<MapVal> mins;
-        mins.reserve(histograms_.size());
-        for (const auto& h : histograms_) {
-            mins.push_back(h.minimum());
+    const std::vector<MapVal> & minimums() const {
+        if (dirty_mins_){ 
+            for (size_t i=0; i < K_; i++) 
+                mins_[i] = histograms_[i].minimum();
+            dirty_mins_ = false;
         }
-        return mins;
+        return mins_;
     }
 
     void get_all(const token_t& token, std::vector<MapVal>& out) const {
@@ -137,7 +150,11 @@ public:
 
     size_t size() const { return histograms_.size(); }
 
-    
+    void invalidate_cache(){
+        dirty_totals_ = true;
+        dirty_mins_ = true;
+        dirty_maxs_ = true;
+    }
 };
 
 } // namespace ksets::histogram

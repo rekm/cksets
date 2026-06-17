@@ -33,10 +33,8 @@ namespace ksets {
         static constexpr bool dynamic_threshold_ =
             preselect::threshold_policy_traits<ThresholdPolicy>::dynamic_threshold;
 
-        using agent_type =
-            std::conditional_t<dynamic_threshold_,
-                typename seqan::hibf::interleaved_bloom_filter::template counting_agent_type<ValueType>,
-                typename seqan::hibf::interleaved_bloom_filter::membership_agent_type>;    
+        using agent_type = typename seqan::hibf::interleaved_bloom_filter::template counting_agent_type<ValueType>;    
+
     public:
         using Base = HistogramPreselectPolicy<HistPreselectIBF<HistogramCollection, Distance>,
                             HistogramCollection, Distance>;
@@ -60,14 +58,12 @@ namespace ksets {
                 precomputed_distances_.resize(data_.size());
             for (size_t i = 0; i < ibf_.bin_count(); ++i)
                 all_bins_.push_back(seqan::hibf::bin_index{i});
+            fill_ibf();
             refresh_agent();
         }
         
         void refresh_agent(){
-            if constexpr (dynamic_threshold_)
-                cluster_agent_ = ibf_.counting_agent();
-            else
-                cluster_agent_ = ibf_.membership_agent();
+            cluster_agent_ = ibf_.counting_agent();
         }
 
         void before_iteration_impl(size_t it_idx, std::vector<label_t>& labels_cur) {
@@ -97,13 +93,9 @@ namespace ksets {
             else
             {
                 uint16_t threshold =  threshold_policy_.compute_threshold(data_row.size());
-                auto const& res = cluster_agent_.membership_for(data_row, threshold);
-                if (res.empty()){
+                preselect::membership_with_dynamic_min_threshold(data_row, indices_, threshold, cluster_agent_);
+                if (indices_.empty())
                     indices_.assign(fallback_indices_.begin(), fallback_indices_.end());
-                } else {
-                    indices_.assign(res.begin(), res.end());
-                    //indices_ = cluster_agent_.membership_for(data_row, threshold);
-                }
             }
             
             
@@ -141,6 +133,12 @@ namespace ksets {
                 precomputed_distances_[i] = dist_.get(data_[i], labels_cur[i]);
             }
         }
+
+        label_t estimate_best_cluster(const std::vector<token_t>& data_row){
+            auto const& min_counts = hists_.minimums(); 
+            return preselect::estimate_best_cluster(data_row, min_counts, cluster_agent_);
+        }
+        
 
     private:
         HistogramCollection& hists_;

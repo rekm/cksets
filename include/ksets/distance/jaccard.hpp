@@ -15,21 +15,21 @@ namespace ksets::distance {
         std::vector<count_t, ksets::memory::AlignedAllocator<count_t, 32>> tsum_;
         std::vector<double> dists_;
         std::vector<count_t, ksets::memory::AlignedAllocator<count_t, 32>> scratch_;
-        std::vector<count_t> hist_sums_;
         
         public:
             using Base::Base;
             using Base::H_;
 
             void begin_iteration_impl(size_t iter){
-                hist_sums_ = H_.totals();
+                auto const& hist_sums = H_.totals();
                 //miss_.resize(H_.size());
                 //tsum_.resize(H_.size());
                 //dists_.resize(H_.size());
             }
 
             double get_impl(const std::vector<token_t>& token_row, cluster_t label) {
-                size_t total = hist_sums_[label];
+                auto const& hist_sums = H_.totals();
+                size_t total = hist_sums[label];
                 auto & hist =  H_[label];
                 size_t miss = 0;
                 size_t tsum = 0;
@@ -112,7 +112,8 @@ namespace ksets::distance {
                         [](int tsum, double denom) { return 1 - (tsum / denom); });
                 */
                 for (size_t k=0;k<scratch_.size();++k){
-                    auto denom = miss_[k] + hist_sums_[k];
+                    auto const& hist_sums = H_.totals();
+                    auto denom = miss_[k] + hist_sums[k];
                     dists_[k] = 1.0 - double(tsum_[k]) / denom;
                 }
                 return dists_;
