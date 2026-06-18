@@ -76,9 +76,9 @@ larger_data_easy() {
     done
 }
 
-larger_data_hard() {
+larger_data_intermediate() {
     local clust_size=${1:-512}
-    mapfile -t sim_data_4 < <(printf "%s\n" "sim_icd_data_40000_${clust_size}_1600 "{7000,10000,15000,30000,40000}" NA ${clust_size} 0 1" )
+    mapfile -t sim_data_4 < <(printf "%s\n" "sim_icd_data_40000_${clust_size}_1600 "{7000,10000,15000}" NA ${clust_size} 0 1" )
     arraylength=${#sim_data_4[@]}
     for (( i=0; i<${arraylength}; i++ )); do 
         #printf "%s\n" "${sim_data_4[$i]} --- cksets "{1..4}" dry 2 0 none full"
@@ -87,10 +87,21 @@ larger_data_hard() {
     done
 }
 
+larger_data_hard() {
+    local clust_size=${1:-512}
+    mapfile -t sim_data_4 < <(printf "%s\n" "sim_icd_data_40000_${clust_size}_1600 "{30000,40000}" NA ${clust_size} 0 1" )
+    arraylength=${#sim_data_4[@]}
+    for (( i=0; i<${arraylength}; i++ )); do 
+        #printf "%s\n" "${sim_data_4[$i]} --- cksets "{1..4}" dry 2 0 none full"
+        printf "${sim_data_4[$i]} --- %s\n" \
+         "cksets "{1..3}" run "{${clust_size},${clust_size}}" "{0,0}" "{none,ibf}" "{full,memorize}    
+    done
+}
 
 get_benchmarks() {
-    art_benchmarks
-    larger_data_easy
+    #art_benchmarks
+    larger_data_easy #| tee /dev/stderr
+    larger_data_intermediate 
     #mapfile -t sim_data_2 < <(printf "%s\n" "sim_icd_data_38451 "{1200,2000,4000,8000,10000,20000,30000,38451,50000}" NA 500 0 1" )
     #arraylength=${#sim_data_2[@]}
     #for (( i=0; i<${arraylength}; i++ )); do 
