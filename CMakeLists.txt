@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25...3.30)
-project(KSets VERSION 0.1.0 LANGUAGES CXX)
+project(KSets VERSION 0.2.0 LANGUAGES CXX)
 
 # ---------------------------------------
 # Global settings
@@ -115,7 +115,7 @@ add_library(ksets::ksets ALIAS ksets)
 # ---------------------------------------
 add_executable(cksets src/main/ksets.cpp)
 target_link_libraries(cksets PRIVATE ksets sharg::sharg seqan::hibf)# tsl::robin_map gtl)
-target_compile_options(cksets PRIVATE -g -fno-omit-frame-pointer)
+target_compile_options(cksets PRIVATE -g -march=native -fno-omit-frame-pointer -O3)
 
 
 add_executable(genicds src/scripts/generate_icds.cpp)

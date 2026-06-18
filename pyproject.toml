@@ -7,7 +7,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "ksets-cpp"
-version = "0.1.0"
+version = "0.2.0"
 description = "C++ accelerated K-Sets clustering with pybind11 bindings"
 authors = [{ name = "René Kmiecinski" }]
 requires-python = ">=3.9"

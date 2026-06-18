@@ -14,7 +14,7 @@
 //!\brief The major version as MACRO.
 #define KSETS_VERSION_MAJOR 0
 //!\brief The minor version as MACRO.
-#define KSETS_VERSION_MINOR 1
+#define KSETS_VERSION_MINOR 2
 //!\brief The patch version as MACRO.
 #define KSETS_VERSION_PATCH 0
 //!\brief The release candidate number. 0 means stable release, >= 1 means release candidate.
