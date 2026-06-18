@@ -102,8 +102,24 @@ private:
 
     // RunSummary example
     void print(const ksets::RunSummary& e) const {
+        std::string str_reason; 
+        switch (e.reason){
+            case ksets::EndReason::DistanceSumStagnated:
+                str_reason = "Sum of Distances Stagnated";
+                break;
+            case ksets::EndReason::DistanceIncreased:
+                str_reason = "Sum of Distances Increased after Assignment";
+                break;
+            case ksets::EndReason::IterationLimitReached:
+                str_reason = "Max Limit of Iteration Reached";
+                break;
+            case ksets::EndReason::Interupt:
+                str_reason = "Algorithm was Interupted by System or User";
+                break;
+        }
         std::cerr << "[ Final Summary ]\n";     
         std::cerr << "Total Iterations: " << e.iterations << "\n"
+                << "End Reason: " << str_reason << "\n"
                 << "Avg Histogram Size: " << e.hist.avg << "\n"
                 << "Median Histogram Size: " << e.hist.median << "\n"
                 << "Sum of Total Distances: " << e.sum_distances << "\n"; 

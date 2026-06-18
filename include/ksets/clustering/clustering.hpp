@@ -25,7 +25,14 @@
 
 namespace ksets
 {
-    
+
+enum class EndReason {
+  DistanceSumStagnated,
+  DistanceIncreased,
+  IterationLimitReached,
+  Interupt,
+};     
+
 struct ClusterResult {
     std::vector<label_t> labels;
     std::vector<std::vector<hist_count_t>> histograms;
@@ -108,6 +115,7 @@ struct RunSummary {
 
     size_t iterations;
     double sum_distances;
+    enum EndReason reason; 
     HistogramStats hist;
 };
 
@@ -179,7 +187,8 @@ ClusterResult cluster_cpp(
         int max_iter = 50, 
         int seed = 42,
         Sink sink = {}){
-
+    
+    enum EndReason reason = EndReason::DistanceSumStagnated;
     bool histograms_provided = ! histograms.empty();
     
     
@@ -197,6 +206,7 @@ ClusterResult cluster_cpp(
             histograms_provided
         };
     });
+    
     std::vector<label_t> labels_cur(data.size());
     std::vector<label_t> labels_prev(data.size());
     std::mt19937_64 rng(seed);
@@ -235,7 +245,7 @@ ClusterResult cluster_cpp(
     double sdth = std::numeric_limits<double>::max(); // Current Iteration Sum of distance (Termination Criterion)
     std::vector<double> sumd_prev(K,0); // Per cluster sums of contained elements of last iteration
     std::vector<double> sumd(K,0); // Current iteration distances 
-    std::vector<hist_count_t> hist_sums = histograms.totals(); // Sums of observed elements per cluster
+    auto const & hist_sums = histograms.totals(); // Sums of observed elements per cluster
     
     size_t j = 0; // Main Iteration Counter
     
@@ -315,9 +325,20 @@ ClusterResult cluster_cpp(
         //4.2 Stop if error increases
         if (sdth > sdth_old) {
             //std::cout << std::format("Error Increased: sdth={0:0.6f} > sdth_old={1:0.6f}\n", sdth, sdth_old);
+            reason = EndReason::DistanceIncreased; 
             sumd = sumd_prev;
             //reverse histogram changes
             histUpdater.rollback(labels_cur);
+            labels_cur = labels_prev;
+            auto now = std::chrono::high_resolution_clock::now();
+            ++j;
+            telemetry::emit(sink, [&]{
+            double delta = (j == 0)
+                ? std::numeric_limits<double>::quiet_NaN()
+                : std::abs(sdth_old - sdth);
+            return IterationMetrics{j, sdth, delta, now };
+            });
+            sdth = sdth_old;
             break;
         }
         if (j==0 && histograms_provided){
@@ -327,7 +348,7 @@ ClusterResult cluster_cpp(
         emptyClusterFix.execute_fix(labels_cur);
         histUpdater.commit(labels_cur);
         histPreselector.update(labels_cur);
-        hist_sums = histograms.totals();
+        histograms.totals();
         //4.4 increment counter
         
         auto now = std::chrono::high_resolution_clock::now();
@@ -343,7 +364,7 @@ ClusterResult cluster_cpp(
     }
 
     telemetry::emit(sink, [&]{ 
-        return RunSummary{j,sdth, compute_hist_stats(histograms)};
+        return RunSummary{j,sdth, reason, compute_hist_stats(histograms)};
     });
     
     
