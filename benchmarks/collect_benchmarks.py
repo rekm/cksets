@@ -77,12 +77,13 @@ def parse_file(args, _f: pathlib.Path, sec_id=None):
                     algo_preselect = algo_opts[5]
                     algo_rebuild   = algo_opts[6]
            
-            algo_t_preprocess   = easy_split_parse(line, "Initial Data Processing (seconds):")
-            algo_t_algo         = easy_split_parse(line, "Algorithm Total Runtime (seconds):")
-            algo_t_wall         = easy_split_parse(line, "Elapsed (wall clock) time (h:mm:ss or m:ss):")
-            algo_max_memory     = easy_split_parse(line, "Maximum resident set size (kbytes):")
-            algo_distance_score = easy_split_parse(line, "Sum of Total Distances:")
-            algo_iterations     = easy_split_parse(line, "Total Iterations:")
+            
+            algo_t_preprocess   = easy_split_parse(line, algo_t_preprocess,  "Initial Data Processing (seconds):")
+            algo_t_algo         = easy_split_parse(line, algo_t_algo,        "Algorithm Total Runtime (seconds):")
+            algo_t_wall         = easy_split_parse(line, algo_t_wall,        "Elapsed (wall clock) time (h:mm:ss or m:ss):")
+            algo_max_memory     = easy_split_parse(line, algo_max_memory,    "Maximum resident set size (kbytes):")
+            algo_distance_score = easy_split_parse(line, algo_distance_score, "Sum of Total Distances:")
+            algo_iterations     = easy_split_parse(line, algo_iterations, "Total Iterations:")
 
             line_parse = re.match(pattern=r".*Avg Preselect Savings: *([\d\.]+)%.*", string=line)
             if line_parse is not None:
@@ -124,11 +125,12 @@ def parse_file(args, _f: pathlib.Path, sec_id=None):
         sep="\t")
          
 
-def easy_split_parse(line, split_str, default=None):
-    ret = default
-    line_parse = line.split(split_str)
-    if len(line_parse) == 2:
-                ret = line_parse[1].strip()
+def easy_split_parse(line, var, split_str, default=None):
+    ret = var
+    if ret is None or ret == default:
+        line_parse = line.split(split_str)
+        if len(line_parse) == 2:
+            ret = line_parse[1].strip()
     return ret
 
 def main(CMD=None):
@@ -141,8 +143,7 @@ def main(CMD=None):
     header = ["id"]
     if args.identifier is not None:
          header.append(args.id_name)
-    header.extend([
-        "id", 
+    header.extend([ 
         "start_time",
         "dataset_type",
         "dataset_len",
