@@ -3,6 +3,7 @@
 #include <ksets/histogram/collection_iterator.hpp>
 #include <ksets/types.hpp>
 #include <numeric>
+#include <vector>
 
 namespace ksets {
 

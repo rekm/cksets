@@ -1,6 +1,7 @@
 #pragma once
 #include <ksets/types.hpp>
 #include <iostream>
+#include <vector>
 
 namespace ksets {
 

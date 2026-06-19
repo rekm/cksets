@@ -2,6 +2,7 @@
 #include <ksets/types.hpp>
 #include <ksets/histogram/base.hpp>
 #include <ksets/histogram/collection_iterator.hpp>
+#include <vector>
 #include <span>
 #include <iostream>
 

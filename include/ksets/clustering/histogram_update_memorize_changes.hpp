@@ -1,6 +1,7 @@
 #pragma once
 #include <ksets/clustering/histogram_update_policy.hpp>
 #include <ksets/types.hpp>
+#include <vector>
 
 namespace ksets {
 
