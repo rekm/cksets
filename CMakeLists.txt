@@ -10,16 +10,18 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set(CPM_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/external")
 set(CPM_SOURCE_CACHE "${CMAKE_SOURCE_DIR}/external") # That is close to what I want to achieve
-set(Python3_EXECUTABLE "" CACHE FILEPATH "Path to Python interpreter")
-find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
-
+option(BUILD_PYTHON_BINDINGS "Build pybind11 extension" ON)
+if(BUILD_PYTHON_BINDINGS)
+    set(Python3_EXECUTABLE "" CACHE FILEPATH "Path to Python interpreter")
+    find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+endif()
 # This allows including `*.cmake` files from the `cmake` directory without specifying the full path.
 list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 # ---------------------------------------
 # CPM Package Manager
 # ---------------------------------------
-set(CPM_DOWNLOAD_LOCATION "${CMAKE_SOURCE_DIR}/external/CPM.cmake")
+set(CPM_DOWNLOAD_LOCATION "${CMAKE_CURRENT_LIST_DIR}/external/CPM.cmake")
 #include(${CPM_DOWNLOAD_LOCATION})
 
 
@@ -30,18 +32,18 @@ set(CPM_DOWNLOAD_LOCATION "${CMAKE_SOURCE_DIR}/external/CPM.cmake")
     
 
 
-if(PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
-    include(${CMAKE_SOURCE_DIR}/cmake/dependencies.cmake)
+if(PROJECT_SOURCE_DIR STREQUAL CMAKE_CURRENT_LIST_DIR)
+    include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies.cmake)
 endif()
 
-include(${CMAKE_SOURCE_DIR}/cmake/configuration.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/configuration.cmake)
 
 add_library(ksets_interface INTERFACE)
 set_target_properties(ksets_interface PROPERTIES EXPORT_NAME interface)
 
 target_include_directories(ksets_interface
     INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
 
@@ -98,7 +100,7 @@ set_target_properties(ksets PROPERTIES EXPORT_NAME ksets)
 
 target_include_directories(ksets
     PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
 
@@ -137,7 +139,7 @@ enable_testing()
 # ---------------------------------------
 # Python Bindings
 # ---------------------------------------
-option(BUILD_PYTHON_BINDINGS "Build pybind11 extension" ON)
+
 if(BUILD_PYTHON_BINDINGS)
     add_subdirectory(python_bindings)
 endif()
@@ -166,7 +168,7 @@ install(
 
 include(CMakePackageConfigHelpers)
 configure_package_config_file(
-    ${CMAKE_SOURCE_DIR}/cmake/KSetsConfig.cmake.in
+    ${CMAKE_CURRENT_LIST_DIR}/cmake/KSetsConfig.cmake.in
     ${CMAKE_BINARY_DIR}/KSetsConfig.cmake
     INSTALL_DESTINATION lib/cmake/ksets
 )
