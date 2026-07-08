@@ -89,13 +89,10 @@ endif()
 
 
 
-
-add_library(ksets
-    src/ksets/clustering.cpp
-    src/ksets/clustering/ksets.cpp
-    src/ksets/indexing/ibf_processor.cpp
+add_library(ksets STATIC
     src/ksets/hashing/MurmurHash3.cpp
 )
+
 set_target_properties(ksets PROPERTIES EXPORT_NAME ksets)
 
 target_include_directories(ksets
@@ -133,7 +130,7 @@ target_link_libraries(genicds PRIVATE sharg::sharg)
 # Subdirectories
 # ---------------------------------------
 add_subdirectory(benchmarks)
-enable_testing()
+#enable_testing()
 #add_subdirectory(tests)
 
 # ---------------------------------------

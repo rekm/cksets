@@ -11,6 +11,7 @@
 
 #include <ksets/types.hpp>
 #include <ksets/telemetry.hpp>
+#include <ksets/result.hpp>
 #include <string> 
 #include <format>
 
@@ -33,11 +34,11 @@ enum class EndReason {
   Interupt,
 };     
 
-struct ClusterResult {
+/*struct ClusterResult {
     std::vector<label_t> labels;
     std::vector<std::vector<hist_count_t>> histograms;
     std::vector<double> sumd;
-};
+};*/
 
 struct AlgorithmStart {
     static constexpr telemetry::TelemetryLevel level =
@@ -371,9 +372,7 @@ ClusterResult cluster_cpp(
     // 5. Results
 
 
-    auto histogram_out = to_hist_output_format(histograms, max_hist_length);
-
-    return {labels_cur, histogram_out, sumd};
+    return {labels_cur, j, sdth};
 }
 
 

@@ -199,7 +199,7 @@ py::tuple cluster_binding(py::array input,
                              ". Expected: 'memorize' or 'full'");
     }
 
-    return py::make_tuple(r.labels, r.histograms, r.sumd);
+    return py::make_tuple(r.labels, py::none(), r.objective);
 }
 
 

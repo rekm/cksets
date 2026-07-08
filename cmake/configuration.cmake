@@ -65,7 +65,7 @@ endif ()
 
 
 find_path(KSETS_INCLUDE_DIR
-          NAMES clustering/ksets.hpp clustering/clustering.hpp version.hpp
+          NAMES ksets.hpp clustering/clustering.hpp version.hpp
           HINTS "${PROJECT_SOURCE_DIR}/include"
 )
 
