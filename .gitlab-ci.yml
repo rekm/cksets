@@ -78,10 +78,8 @@ cpp_build:
     - .setup_env
     - .default_rules
   script:
-    - cmake  -B c_build  -DCMAKE_CXX_COMPILER=$(which g++)
-    - pushd c_build
-    - make -j 4 
-    # run the command here
+    - cmake  -B c_build  -DCMAKE_CXX_COMPILER=$(which g++) -DCMAKE_BUILD_TYPE=RelWithDebInfo
+    - cmake --build c_build  -j 4
   artifacts:
     paths:
       - c_build/*
@@ -96,9 +94,7 @@ cpp_test:
   needs:
     - cpp_build
   script:
-    - cd c_build
-    - make check 
-    # run the command here
+    - cmake --build build   -t check -j 5 
   artifacts:
     paths:
       - c_build/*
