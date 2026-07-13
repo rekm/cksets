@@ -14,6 +14,10 @@ enum class DistanceType : uint8_t {
     jaccard, cosine
 };
 
+enum class HashStrategy : uint8_t {
+    murmur, prehashed
+};
+
 
 struct ClusterOptions
 {
@@ -22,6 +26,7 @@ struct ClusterOptions
     size_t max_iterations = 50;
     uint64_t seed = 42;
 
+    HashStrategy      hash      = HashStrategy::murmur;
     DistanceType      distance  = DistanceType::jaccard;
     HistogramRebuild  rebuild   = HistogramRebuild::full;
     PreselectStrategy preselect = PreselectStrategy::ibf;
