@@ -5,20 +5,22 @@
 
 namespace ksets {
 
-    template <typename HistogramCollection>
+    template <typename HistogramCollection, telemetry::TelemetrySink Sink>
     class HistUpdaterKsetsAuthors
-        : public HistogramUpdatePolicy<HistUpdaterKsetsAuthors<HistogramCollection>, HistogramCollection>
+        : public HistogramUpdatePolicy<HistUpdaterKsetsAuthors<HistogramCollection, Sink>, HistogramCollection, Sink>
     {
     public:
-        using Base = HistogramUpdatePolicy<HistUpdaterKsetsAuthors<HistogramCollection>,
-                            HistogramCollection>;
+        using Base = HistogramUpdatePolicy<HistUpdaterKsetsAuthors<HistogramCollection, Sink>,
+                            HistogramCollection, Sink>;
         using Base::Base;
         using Base::iteration_;
         explicit HistUpdaterKsetsAuthors(
                         HistogramCollection& hist,
                         const std::vector<std::vector<token_t>>& data, 
-                        bool histograms_provided = false)
-            : Base(hist, data, histograms_provided),  
+                        const Sink & sink,
+                        bool histograms_provided = false
+                        )
+            : Base(hist, data, sink, histograms_provided),  
             hists_(hist), data_(data), prev_hists_(hist.clone_empty())
         {}
 
@@ -36,6 +38,12 @@ namespace ksets {
                     hists_.increment(labels_cur[i], token);
                 }
             }
+            telemetry::emit(Base::sink_, [&]{
+                    size_t t_size = 0;
+                    for (size_t i=0; i<hists_.size(); i++) 
+                        t_size += hists_[i].size();
+                    return HistogramUpdateInfo{Base::iteration_, t_size}; 
+            }); 
         }
 
         void rollback_impl(std::vector<label_t>& labels_cur) {

@@ -175,7 +175,7 @@ HistogramStats compute_hist_stats(const auto& histograms) {
 }
 
 template <class HistogramCollection, 
-          template<class> class HistogramUpdatePolicy,
+          template<class, class> class HistogramUpdatePolicy,
           template<class, class> class HistogramPreselectPolicy,
           template<class> class DistancePolicy = distance::JaccardDistance,
           class EmptyClusterPolicy = EmptyClusterKeep,
@@ -238,7 +238,7 @@ ClusterResult cluster_cpp(
         }
 
     }
-    HistogramUpdatePolicy<HistogramCollection> histUpdater(histograms, data, histograms_provided);
+    HistogramUpdatePolicy<HistogramCollection, decltype(sink)> histUpdater(histograms, data, sink, histograms_provided);
     EmptyClusterPolicy emptyClusterFix(labels_cur, K);
 
     // Zero out data structurs

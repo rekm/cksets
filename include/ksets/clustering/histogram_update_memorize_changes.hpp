@@ -1,6 +1,7 @@
 #pragma once
 #include <ksets/clustering/histogram_update_policy.hpp>
 #include <ksets/types.hpp>
+#include <ksets/telemetry.hpp>
 #include <vector>
 
 namespace ksets {
@@ -8,19 +9,21 @@ namespace ksets {
     
 
 
-    template <typename HistogramCollection>
+    template <typename HistogramCollection, telemetry::TelemetrySink Sink>
     class HistUpdaterMemorizeChanges
-        : public HistogramUpdatePolicy<HistUpdaterMemorizeChanges<HistogramCollection>, HistogramCollection>
+        : public HistogramUpdatePolicy<HistUpdaterMemorizeChanges<HistogramCollection, Sink>, HistogramCollection, Sink>
     {
     public:
-        using Base = HistogramUpdatePolicy<HistUpdaterMemorizeChanges<HistogramCollection>,
-                            HistogramCollection>;
+        using Base = HistogramUpdatePolicy<HistUpdaterMemorizeChanges<HistogramCollection, Sink>,
+                            HistogramCollection, Sink>;
         using Base::Base;
         using Base::iteration_;
         explicit HistUpdaterMemorizeChanges(HistogramCollection& hist,
-                            const std::vector<std::vector<token_t>>& data, 
-                            bool histograms_provided = false)
-            : Base(hist, data, histograms_provided),  
+                            const std::vector<std::vector<token_t>>& data,
+                            const Sink& sink, 
+                            bool histograms_provided = false
+                            )
+            : Base(hist, data, sink, histograms_provided),  
             hists_(hist), data_(data), histograms_provided_(histograms_provided)
         {}
 
@@ -50,7 +53,9 @@ namespace ksets {
                         new_token_created = hists_.increment(new_cluster, token);
                     }
                 }
-                std::cerr << "Iteration "<< Base::iteration_ << " , Changes: " << changes_.size() << "\n";
+                telemetry::emit(Base::sink_, [&]{ 
+                    return HistogramUpdateInfo{Base::iteration_, changes_.size()}; 
+                }); 
                 prev_changes_.swap(changes_);
             }
             

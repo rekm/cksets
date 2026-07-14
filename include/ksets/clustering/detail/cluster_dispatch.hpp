@@ -15,7 +15,7 @@ namespace ksets::detail {
     template<
         typename Hash,
         template<class> class Distance,
-        template<class> class Updater,
+        template<class, class> class Updater,
         template<class, class> class Preselect,
         
         std::ranges::forward_range Data,
@@ -54,7 +54,7 @@ namespace ksets::detail {
     template<
         typename Hash,
         template<class> class Distance, 
-        template<class> class Updater, 
+        template<class, class> class Updater, 
         std::ranges::forward_range Data,
         typename Telemetry
     >

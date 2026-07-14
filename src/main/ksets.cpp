@@ -34,15 +34,21 @@ void parse_data(
     }
 
 } 
-
-struct CerrSink {
+template<class Stream>
+struct StreamSink {
     // Maximum telemetry level this sink will handle
     static constexpr ksets::telemetry::TelemetryLevel level =
         ksets::telemetry::TelemetryLevel::debug;
 
+    explicit StreamSink(Stream& s)
+        : out_(s)
+    {}
+
+    Stream& out_;
+
     template<class Event>
     void handle(const Event& e) const {
-        print(e);
+        print(out_, e);
     }
 
 private:
@@ -51,57 +57,61 @@ private:
 
     // Generic fallback (if no specific overload exists)
     template<class Event>
-    void print(const Event& e) const {
-        std::cerr << "[Telemetry] Event: " << typeid(e).name() << "\n";
+    void print(std::ostream& out, const Event& e) const {
+        out << "[Telemetry] Event: " << typeid(e).name() << "\n";
     }
 
-    void print(const ksets::PreselectSavingsTelemetry& e) const {
+    void print(std::ostream& out, const ksets::PreselectSavingsTelemetry& e) const {
         savings_preselect += 1.0 - double(e.total_hists_touched) / double(e.total_tokens * e.K);
         savings_events++;
           
     }
 
-    void print(const ksets::AlgorithmStart& e ) const {
-        std::cerr << "[Algorithm Initialized]\n" 
+    void print(std::ostream& out, const ksets::AlgorithmStart& e ) const {
+        out << "[Algorithm Initialized]\n" 
                   << "Histograms Provided: " << (e.histograms_provided ? "TRUE" : "FALSE") 
                   << "\nData Size: " << e.n_items << "\n";
     }
 
-    void print(const ksets::DistanceMeasureTelemetry& e) const {
-        std::cerr << "[Iteration " << e.iter << ", Data Row: " << e.data_row << " ]" ;
+    void print(std::ostream& out, const ksets::DistanceMeasureTelemetry& e) const {
+        out << "[Iteration " << e.iter << ", Data Row: " << e.data_row << " ]" ;
         size_t iter = 0;
         std::string sep = " "; 
         for ( const auto &dist: e.distances) {
-            std::cerr << sep << iter << ": " << dist;
+            out << sep << iter << ": " << dist;
             ++iter;
             sep = ", ";
         }
-        std::cerr <<  "\n";
+        out <<  "\n";
     }
 
-    void print(const ksets::LabelSelectTelemetry& e) const {
-        std::cerr << "[Iteration " << e.iter << ", Data Row: " << e.data_row << " ] " 
+    void print(std::ostream& out, const ksets::HistogramUpdateInfo& e) const {
+        out << "[Iteration " << e.iteration << "] Histogram Updates = " << e.changes << "\n" ;
+    }
+
+    void print(std::ostream& out, const ksets::LabelSelectTelemetry& e) const {
+        out << "[Iteration " << e.iter << ", Data Row: " << e.data_row << " ] " 
                  << "Dist( " << e.old_label << " ) = " << e.old_dist << " --> "
                  << "Dist( " << e.new_label << " ) = " << e.new_dist << "\n";
     }
 
     // IterationMetrics specialization
-    void print(const ksets::IterationMetrics& e) const {
+    void print(std::ostream& out, const ksets::IterationMetrics& e) const {
         
-        std::cerr << "[Iteration " << e.iter << "] "
+        out << "[Iteration " << e.iter << "] "
                   << "Objective: " << e.objective
                   << ", Delta: " << e.delta;
         if (savings_events > 0){
             double avg_savings = savings_preselect / static_cast<double>(savings_events);
-            std::cerr << ", Avg Preselect Savings: " << avg_savings * 100 << "%";  
+            out << ", Avg Preselect Savings: " << avg_savings * 100 << "%";  
         }          
         savings_events = 0;
         savings_preselect = 0.0;
-        std::cerr << "\n"; 
+        out << "\n"; 
     }
 
     // RunSummary example
-    void print(const ksets::RunSummary& e) const {
+    void print(std::ostream& out, const ksets::RunSummary& e) const {
         std::string str_reason; 
         switch (e.reason){
             case ksets::EndReason::DistanceSumStagnated:
@@ -117,8 +127,8 @@ private:
                 str_reason = "Algorithm was Interupted by System or User";
                 break;
         }
-        std::cerr << "[ Final Summary ]\n";     
-        std::cerr << "Total Iterations: " << e.iterations << "\n"
+        out << "[ Final Summary ]\n";     
+        out << "Total Iterations: " << e.iterations << "\n"
                 << "End Reason: " << str_reason << "\n"
                 << "Avg Histogram Size: " << e.hist.avg << "\n"
                 << "Median Histogram Size: " << e.hist.median << "\n"
@@ -134,7 +144,7 @@ private:
             hist_quant_perc += chunk_perc;
             hist_quant++;  
         }
-            std::cerr << "[Run Summary] "
+            out << "[Run Summary] "
                     << "Iterations: " << e.iterations
                     << ", AvgHist: " << e.avg_hist
                     << ", MedianHist: " << e.median_hist
@@ -214,7 +224,7 @@ int main(int argc, char ** argv)
         format.delimiter(' ')
             .trim({'\t'})
             .no_header().quote(false);
-    CerrSink cerr_sink{};
+    StreamSink cerr_sink{std::cerr};
     ksets::token_encoder::ReversibleInterning encoder;    
     csv::CSVReader reader(data_file.string(), format); 
     std::vector<std::vector<ksets::token_t>> data;

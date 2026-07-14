@@ -7,6 +7,7 @@ using token_t = std::uint64_t;
 using label_t = std::uint16_t;
 using cluster_t = std::uint16_t;
 using hist_count_t = std::uint32_t;
+using iteration_count_t = std::uint16_t;
 using dist_base_t = double;
 
 struct Change

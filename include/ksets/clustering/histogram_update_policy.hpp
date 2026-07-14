@@ -1,23 +1,35 @@
 #pragma once
 #include <ksets/types.hpp>
+#include <ksets/telemetry.hpp>
 #include <iostream>
 #include <vector>
 
 namespace ksets {
 
-    template <typename Derived, class HistogramCollection>
+    struct HistogramUpdateInfo {
+        static constexpr telemetry::TelemetryLevel level =
+            telemetry::TelemetryLevel::basic;
+        size_t iteration;
+        size_t changes;
+    
+    };
+
+    template <typename Derived, class HistogramCollection, telemetry::TelemetrySink Sink>
     class HistogramUpdatePolicy {
         protected:
             HistogramCollection& H_;
             const std::vector<std::vector<token_t>>& data_;
-            int iteration_ = 0;
-            bool histograms_provided_ = false;   
+            iteration_count_t iteration_ = 0;
+            bool histograms_provided_ = false; 
+            const Sink& sink_;   
         public:
             HistogramUpdatePolicy(
                         HistogramCollection& h,
                         const std::vector<std::vector<token_t>>& d,
-                        bool histograms_provided = false)
-                : H_(h), data_(d), histograms_provided_(histograms_provided){}
+                        const Sink& sink,
+                        bool histograms_provided = false
+                        )
+                : H_(h), data_(d), histograms_provided_(histograms_provided), sink_(sink){}
 
             void before_iteration(size_t it_idx) {
                 #ifdef DEBUG_BASE
