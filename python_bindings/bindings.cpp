@@ -1,7 +1,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
-
+#include <iostream>
 #include <ksets/hashing/murmur_hash.hpp>
 #include <ksets/clustering/clustering.hpp>
 #include <ksets/memory/pool_allocator.hpp>
@@ -12,55 +12,11 @@
 #include <ksets/clustering/histogram_preselect_ibf.hpp>
 #include <ksets/token_encoder/reversible.hpp>
 #include <ksets/types.hpp>
-#include <ksets/telemetry.hpp>
+#include <ksets/telemetry/stream_sink.hpp>
 
 namespace py = pybind11;
 
 
-// This is bad but should be alright for now 
-// Needs to be properly adressed and itegrated into python 
-struct CerrSink {
-    // Maximum telemetry level this sink will handle
-    static constexpr ksets::telemetry::TelemetryLevel level =
-        ksets::telemetry::TelemetryLevel::basic;
-
-    template<class Event>
-    void handle(const Event& e) const {
-        print(e);
-    }
-
-private:
-
-    // Generic fallback (if no specific overload exists)
-    template<class Event>
-    void print(const Event& e) const {
-    }
-
-
-    void print(const ksets::AlgorithmStart& e ) const {
-        std::cerr << "[Algorithm Initialized]\n" 
-                  << "Histograms Provided: " << (e.histograms_provided ? "TRUE" : "FALSE") 
-                  << "\nData Size: " << e.n_items << "\n";
-    }
-
-    // IterationMetrics specialization
-    void print(const ksets::IterationMetrics& e) const {
-        
-        std::cerr << "[Iteration " << e.iter << "] "
-                  << "Objective: " << e.objective
-                  << ", Delta: " << e.delta;
-        std::cerr << "\n"; 
-    }
-
-    // RunSummary example
-    void print(const ksets::RunSummary& e) const {
-        std::cerr << "[ Final Summary ]\n";     
-        std::cerr << "Total Iterations: " << e.iterations << "\n"
-                << "Avg Histogram Size: " << e.hist.avg << "\n"
-                << "Median Histogram Size: " << e.hist.median << "\n"
-                << "Sum of Total Distances: " << e.sum_distances << "\n"; 
-    }
-};
 
 
 //Get String Object Matrix from python 
@@ -164,7 +120,7 @@ py::tuple cluster_binding(py::array input,
     //auto alloc_policy = ksets::memory::PoolAllocator<std::pair<const std::string,int>>{}; <- crashes because the PoolAllocator has little human brain power supportiing it
     ksets::histogram::MapHistogramCollection<decltype(hash_policy)> hist_collection(K, hash_policy);//, alloc_policy);
     init_histograms_from_python(histograms, hist_collection, encoder);
-    CerrSink cerr_sink{};
+    ksets::telemetry::StreamSink cerr_sink{std::cerr};
     ksets::ClusterResult r;
     if (hist_rebuild == "memorize") {
         if (preselect == "none") {

@@ -1,7 +1,7 @@
 #pragma once
 #include <ksets/clustering/histogram_update_policy.hpp>
 #include <ksets/types.hpp>
-#include <ksets/telemetry.hpp>
+#include <ksets/telemetry/base.hpp>
 #include <vector>
 
 namespace ksets {

@@ -1,6 +1,6 @@
 #pragma once
 #include <ksets/types.hpp>
-#include <ksets/telemetry.hpp>
+#include <ksets/telemetry/base.hpp>
 #include <iostream>
 #include <vector>
 
