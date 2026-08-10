@@ -33,7 +33,7 @@ cmake.source-dir = "."
 build-dir = "build"
 
 # You already rely on top-level CMakeLists
-cmake.minimum-version = "3.25"
+cmake.version = ">=3.25"
 
 # Make sure wheels include native arch tags
 wheel.py-api = ""

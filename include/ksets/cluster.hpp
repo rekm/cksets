@@ -3,7 +3,7 @@
 #include <ksets/options.hpp>
 #include <ksets/result.hpp>
 #include <ksets/clustering/detail/cluster_dispatch.hpp>
-#include <ksets/telemetry.hpp>
+#include <ksets/telemetry/base.hpp>
 
 namespace ksets {
 
