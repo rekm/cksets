@@ -1,6 +1,7 @@
 #pragma once 
 
 #include <ksets/telemetry/base.hpp>
+#include <numeric>
 
 namespace ksets {
     enum class EndReason {
@@ -82,7 +83,7 @@ namespace ksets {
         double new_dist;
     };
 
-    HistogramStats compute_hist_stats(const auto& histograms) {
+    inline HistogramStats compute_hist_stats(const auto& histograms) {
         HistogramStats stats;
         stats.lengths.reserve(histograms.size());
         double sum_len = 0;

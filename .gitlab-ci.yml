@@ -125,7 +125,7 @@ cpp_test:
   needs:
     - cpp_build
   script:
-    - cmake --build build   -t check -j 5 
+    - cmake --build c_build   -t check -j 5 
   artifacts:
     paths:
       - c_build/*
