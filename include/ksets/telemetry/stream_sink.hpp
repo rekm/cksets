@@ -106,7 +106,8 @@ private:
             }
             num_empty++;
         }
-        size_t num_not_empty = e.hist.lengths.size() - num_empty;
+        size_t k = e.hist.lengths.size();
+        size_t num_not_empty = k - num_empty;
         out << "[ Final Summary ]\n";     
         out << "Total Iterations: " << e.iterations << "\n"
                 << "End Reason: " << str_reason << "\n"
@@ -115,6 +116,14 @@ private:
                 << "Min Histogram Size: " << e.hist.min_len << ", Max Histogram Size: " << e.hist.max_len << "\n" 
                 << "Avg Histogram Size: " << e.hist.avg_len << "\n"
                 << "Median Histogram Size: " << e.hist.median_len << "\n"
+                << "Smallest non-empty Histogram has Label: " << e.hist.label_sortorder[num_empty] << "\n"
+                << "  Hist Size: " <<  e.hist.lengths[num_empty] 
+                    << ", Minimum Value: " << e.hist.min_vals[num_empty] 
+                    << " , Maximum Value: " << e.hist.max_vals[num_empty] << "\n"
+                << "Largest Histogram has Label:            " << e.hist.label_sortorder[k-1] << "\n"
+                << "  Hist Size: " <<  e.hist.lengths[k-1] 
+                    << ", Minimum Value: " << e.hist.min_vals[k-1] 
+                    << " , Maximum Value: " << e.hist.max_vals[k-1] << "\n"
                 << "Sum of Total Distances: " << e.sum_distances << "\n"; 
         /*size_t hist_quant = 1;
         double hist_quant_perc = 0; 

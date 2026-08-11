@@ -30,8 +30,11 @@ namespace ksets {
         size_t max_len;
         double avg_len;                     // average histogram length
         size_t median_len;                  // median histogram length
-        double sum_distances;           // total distance sum
+        double sum_distances; // total distance sum
+        std::vector<hist_count_t> min_vals;
+        std::vector<hist_count_t> max_vals;         
         std::vector<size_t> lengths;    // raw histogram lengths
+        std::vector<size_t> label_sortorder;
         std::vector<double> deciles;
     };
 
@@ -88,6 +91,8 @@ namespace ksets {
     inline HistogramStats compute_hist_stats(const auto& histograms) {
         HistogramStats stats;
         stats.lengths.reserve(histograms.size());
+        stats.max_vals = histograms.maximums();
+        stats.min_vals = histograms.minimums();
         double sum_len = 0;
         size_t num_hists = histograms.size();
         for (size_t idx=0; idx < num_hists; ++idx) {
@@ -95,8 +100,42 @@ namespace ksets {
             sum_len += histograms[idx].size();
         }
         stats.avg_len = sum_len / histograms.size();
+        // The following is a over-engineered solution to an inplace sort of 
+        // multiple vectors and highly cumbersome and pointless in this place.
 
-        std::sort(stats.lengths.begin(), stats.lengths.end());
+        // Gemini botched the first attempt to implement the algorithm.
+        // Generate an index array
+        std::vector<size_t> indices(num_hists);
+        std::iota(indices.begin(), indices.end(), 0);
+
+        // Sort the indices based on the values residing inside stats.lengths
+        std::sort(indices.begin(), indices.end(), [&](size_t a, size_t b) {
+            return stats.lengths[a] < stats.lengths[b];
+        });
+        stats.label_sortorder = indices;
+        // Gemini left out the inverse lookup and used the reordered indices directly.
+        // Which is certainly a choice and very human at that.   
+        std::vector<size_t> dest(num_hists);
+        for (size_t i = 0; i < num_hists; ++i) {
+            dest[indices[i]] = i;
+        }
+        // Reorder all three vectors in-place using the sorted indices to avoid allocations
+        // This permutation algorithm guarantees O(N) time complexity and O(1) extra space.
+        // Also Gemini not wanting to name sources 
+        for (size_t i = 0; i < num_hists; ++i) {
+            while (dest[i] != i) {
+                size_t target_idx = dest[i];
+                
+                // Swap elements across all parallel data structures
+                std::swap(stats.lengths[i], stats.lengths[target_idx]);
+                std::swap(stats.max_vals[i], stats.max_vals[target_idx]);
+                std::swap(stats.min_vals[i], stats.min_vals[target_idx]);
+                
+                // Fix the index map to track the updated position
+                std::swap(dest[i], dest[target_idx]);
+            }
+        }
+        
         stats.min_len = stats.lengths.front();
         stats.max_len = stats.lengths.back();
         size_t n = stats.lengths.size();

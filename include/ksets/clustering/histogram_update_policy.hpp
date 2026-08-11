@@ -9,7 +9,7 @@ namespace ksets {
     struct HistogramUpdateInfo {
         static constexpr telemetry::TelemetryLevel level =
             telemetry::TelemetryLevel::basic;
-        size_t iteration;
+        iteration_count_t iteration;
         size_t changes;
     
     };
@@ -32,15 +32,6 @@ namespace ksets {
                 : H_(h), data_(d), histograms_provided_(histograms_provided), sink_(sink){}
 
             void before_iteration(size_t it_idx) {
-                #ifdef DEBUG_BASE
-                    if (it_idx % 1 == 0){
-                        std::cout << "\nin progress... " << it_idx << "\n";
-                    }
-                #endif
-                #ifdef DEBUG_DESPERATION
-                    for (size_t idx=0; idx < H_.size(); ++idx)
-                        H_[idx].debug_print();
-                #endif
                 iteration_ = it_idx;
                 derived().before_iteration_impl(it_idx);
             }

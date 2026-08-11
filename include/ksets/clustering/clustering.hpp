@@ -206,10 +206,10 @@ ClusterResult cluster_cpp(
             auto now = std::chrono::high_resolution_clock::now();
             ++j;
             telemetry::emit(sink, [&]{
-            double delta = (j == 0)
-                ? std::numeric_limits<double>::quiet_NaN()
-                : std::abs(sdth_old - sdth);
-            return IterationMetrics{j, sdth, delta, now };
+                double delta = (j == 0)
+                    ? std::numeric_limits<double>::quiet_NaN()
+                    : std::abs(sdth_old - sdth);
+                return IterationMetrics{j, sdth, delta, now };
             });
             sdth = sdth_old;
             break;

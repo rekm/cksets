@@ -16,7 +16,7 @@ public:
     }
     
     auto total() const {
-        return static_cast<const Derived*>(this)->total();
+        return derived().total();
     }
 
     void reserve(size_t s){
