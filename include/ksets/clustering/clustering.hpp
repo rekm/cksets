@@ -179,12 +179,12 @@ ClusterResult cluster_cpp(
             best_cluster = std::distance(dists.begin(),
                                          std::min_element(dists.begin(), dists.end()));
             
-            
+            bool force_move = (j == 0) && (!SupportsQuickLabelEstimate<decltype(histPreselector)>);
             auto selection = curr_cluster;
             telemetry::emit(sink, [&]{
                     return LabelSelectTelemetry{j, i, curr_cluster, best_cluster, dists[curr_cluster], dists[best_cluster]};
                 });
-            if ((j == 0) || ((dists[curr_cluster] - dists[best_cluster]) > 0.0 )){
+            if ( force_move || ((dists[curr_cluster] - dists[best_cluster]) > 0.0 )){
                 histUpdater.register_move(i,curr_cluster, best_cluster);
                 selection = best_cluster;
             }
@@ -215,7 +215,8 @@ ClusterResult cluster_cpp(
             break;
         }
         if (j==0 && histograms_provided){
-            histograms.zero_out();
+            if (!SupportsQuickLabelEstimate<decltype(histPreselector)>)
+                histograms.zero_out();
         } 
         //4.3. Recompute histograms by applying histogram changes using data rows
         emptyClusterFix.execute_fix(labels_cur);
