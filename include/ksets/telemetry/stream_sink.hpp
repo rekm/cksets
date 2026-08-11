@@ -99,11 +99,22 @@ private:
                 str_reason = "Algorithm was Interupted by System or User";
                 break;
         }
+        size_t num_empty = 0; 
+        for (auto len: e.hist.lengths){
+            if (len != 0){
+                break;
+            }
+            num_empty++;
+        }
+        size_t num_not_empty = e.hist.lengths.size() - num_empty;
         out << "[ Final Summary ]\n";     
         out << "Total Iterations: " << e.iterations << "\n"
                 << "End Reason: " << str_reason << "\n"
-                << "Avg Histogram Size: " << e.hist.avg << "\n"
-                << "Median Histogram Size: " << e.hist.median << "\n"
+                << "--- Histogram Stats --- \n"
+                << "Non-Empty Histograms: " << num_not_empty << "\n"
+                << "Min Histogram Size: " << e.hist.min_len << ", Max Histogram Size: " << e.hist.max_len << "\n" 
+                << "Avg Histogram Size: " << e.hist.avg_len << "\n"
+                << "Median Histogram Size: " << e.hist.median_len << "\n"
                 << "Sum of Total Distances: " << e.sum_distances << "\n"; 
         /*size_t hist_quant = 1;
         double hist_quant_perc = 0; 

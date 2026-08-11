@@ -26,8 +26,10 @@ namespace ksets {
     // They are compiled out, when a NullSink is used.
 
     struct HistogramStats {
-        double avg;                     // average histogram length
-        size_t median;                  // median histogram length
+        size_t min_len;
+        size_t max_len;
+        double avg_len;                     // average histogram length
+        size_t median_len;                  // median histogram length
         double sum_distances;           // total distance sum
         std::vector<size_t> lengths;    // raw histogram lengths
         std::vector<double> deciles;
@@ -92,11 +94,13 @@ namespace ksets {
             stats.lengths.push_back(histograms[idx].size());
             sum_len += histograms[idx].size();
         }
-        stats.avg = sum_len / histograms.size();
+        stats.avg_len = sum_len / histograms.size();
 
         std::sort(stats.lengths.begin(), stats.lengths.end());
+        stats.min_len = stats.lengths.front();
+        stats.max_len = stats.lengths.back();
         size_t n = stats.lengths.size();
-        stats.median = (n % 2 == 0) ? (stats.lengths[n/2 - 1] + stats.lengths[n/2]) / 2
+        stats.median_len = (n % 2 == 0) ? (stats.lengths[n/2 - 1] + stats.lengths[n/2]) / 2
                                     : stats.lengths[n/2];
 
         size_t chunk_size = std::max(n / 10, size_t{1});
