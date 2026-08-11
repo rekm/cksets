@@ -2,6 +2,7 @@
 
 #include <ksets/telemetry/base.hpp>
 #include <numeric>
+#include <chrono>
 
 namespace ksets {
     enum class EndReason {
