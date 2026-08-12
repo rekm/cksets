@@ -150,6 +150,53 @@ TEST_F(test_distance, paper_test_fast_loop)
 }
 
 
+TEST_F(test_distance, ibf_pruned_range_finalization_test)
+{
+    // Setup 3 clusters so we can prune one out completely
+    uint number_of_clusters{3};
+    auto hash_policy = ksets::hashing::HashPolicy(ksets::hashing::MurmurHash(42));
+    ksets::histogram::MapHistogramCollection hist_collection(number_of_clusters, hash_policy);
+    ksets::distance::JaccardDistance dist(hist_collection);
+
+    // Populate Cluster 0 with your paper data
+    std::vector<ksets::token_t> hist1_paper = {5, 5, 4, 2, 1, 1, 1, 1, 1, 1};
+    for (size_t i = 0; i < hist1_paper.size(); ++i)
+        hist_collection[0].set(i + 1, hist1_paper[i]);
+
+    // Populate Cluster 1 with your paper data
+    std::vector<ksets::token_t> hist2_paper = {1, 1, 1, 1, 1, 3, 2, 4, 5, 3, 1};
+    for (size_t i = 0; i < hist2_paper.size(); ++i)
+        hist_collection[1].set(i + 1, hist2_paper[i]);
+
+    // Populate Cluster 2 (This acts as our "True Home" cluster that the IBF mistakenly prunes out)
+    // We make it nearly identical to the row data so it should yield a great distance score
+    std::vector<ksets::token_t> hist3_data = {5, 5, 5, 5, 5}; 
+    for (size_t i = 0; i < hist3_data.size(); ++i)
+        hist_collection[2].set(i + 1, hist3_data[i]);
+
+    // SIMULATE THE PRESELECT PRUNING:
+    // Create a pruned range that completely omits Cluster 2 (only indices 0 and 1)
+    std::vector<size_t> pruned_indices{0, 1}; 
+    auto ibf_pruned_range = hist_collection.get_range(pruned_indices);
+    EXPECT_EQ(ibf_pruned_range.size(), 2);
+
+    // A sample row matching your paper test layout
+    std::vector<ksets::token_t> row1 = {1, 5, 2, 3, 6}; // A, E, B, C, F
+
+    dist.begin_iteration(1);
+    dist.begin_row();
+
+    // Pass the PRUNED range into your accumulator
+    dist.accumulate_token(row1, ibf_pruned_range);
+    
+    // Call finalize. If scratch_.size() was modified or truncated by the 
+    // accumulation view range, this call will fail to evaluate or cleanly 
+    // boundary-protect index 2.
+    auto const & d = dist.finalize();
+
+    
+}
+
 TEST_F(test_distance, paper_test_singular_get)
 {
     uint number_of_clusters{2};

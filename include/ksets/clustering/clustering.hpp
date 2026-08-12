@@ -89,6 +89,7 @@ ClusterResult cluster_cpp(
     std::vector<size_t> indices(data.size());
     std::iota(indices.begin(), indices.end(), size_t{});
     std::shuffle(indices.begin(), indices.end(), rng);
+    std::vector<bool> is_seed_row(data.size(), false);
     for (size_t j = 0; j < data.size(); j++){
         labels_cur[j] = indices[j] % K;
     }
@@ -97,6 +98,7 @@ ClusterResult cluster_cpp(
         for (cluster_t i = 0; i < K; i++) {
             size_t index = indices[i];
             labels_cur[index] = i; 
+            is_seed_row[index] = true;
             for (auto const& token : data[index]) {
                 histograms.increment(i, token);
             }
@@ -106,7 +108,9 @@ ClusterResult cluster_cpp(
     HistogramPreselectPolicy<HistogramCollection, decltype(distance)> histPreselector(histograms, data, distance);
     if constexpr (SupportsQuickLabelEstimate<decltype(histPreselector)>){
         for (size_t i=0; i<data.size(); i++){
-            labels_cur[i] = histPreselector.estimate_best_cluster(data[i]);
+            if (!is_seed_row[i]) {
+                labels_cur[i] = histPreselector.estimate_best_cluster(data[i]);
+            }
         }
 
     }
@@ -179,7 +183,7 @@ ClusterResult cluster_cpp(
             best_cluster = std::distance(dists.begin(),
                                          std::min_element(dists.begin(), dists.end()));
             
-            bool force_move = (j == 0) && (!SupportsQuickLabelEstimate<decltype(histPreselector)>);
+            bool force_move = (j == 0); //&& (!SupportsQuickLabelEstimate<decltype(histPreselector)>);
             auto selection = curr_cluster;
             telemetry::emit(sink, [&]{
                     return LabelSelectTelemetry{j, i, curr_cluster, best_cluster, dists[curr_cluster], dists[best_cluster]};
@@ -204,7 +208,6 @@ ClusterResult cluster_cpp(
             histUpdater.rollback(labels_cur);
             labels_cur = labels_prev;
             auto now = std::chrono::high_resolution_clock::now();
-            ++j;
             telemetry::emit(sink, [&]{
                 double delta = (j == 0)
                     ? std::numeric_limits<double>::quiet_NaN()
@@ -215,8 +218,8 @@ ClusterResult cluster_cpp(
             break;
         }
         if (j==0 && histograms_provided){
-            if (!SupportsQuickLabelEstimate<decltype(histPreselector)>)
-                histograms.zero_out();
+            //if (!SupportsQuickLabelEstimate<decltype(histPreselector)>)
+                histograms.clear();
         } 
         //4.3. Recompute histograms by applying histogram changes using data rows
         emptyClusterFix.execute_fix(labels_cur);

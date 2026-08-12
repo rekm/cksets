@@ -5,7 +5,7 @@
 #include <hibf/build/bin_size_in_bits.hpp>
 #include <ksets/distance/jaccard.hpp>
 
-
+#include <algorithm>
 #include <ranges>
 namespace ksets::preselect {
 
@@ -60,6 +60,7 @@ namespace ksets::preselect {
         std::vector<uint16_t> threshold_scratch_;
         std::vector<double> min_constant1_;
         std::vector<double> min_constant2_;
+        std::vector<double> min_bound_;
         std::vector<double> max_constant1_;
         std::vector<double> max_constant2_;
         HC &hists_;
@@ -74,6 +75,7 @@ namespace ksets::preselect {
                     threshold_scratch_.resize(hists_.size());
                     min_constant1_.resize(hists_.size());
                     min_constant2_.resize(hists_.size());
+                    min_bound_.resize(hists_.size());
                     max_constant1_.resize(hists_.size());
                     max_constant2_.resize(hists_.size());
                 }
@@ -86,22 +88,77 @@ namespace ksets::preselect {
             for (size_t i=0; i<hists_.size(); i++){
                 double m = static_cast<double>(maximums[i]);
                 double m2 = static_cast<double>(minimums[i]);
-                min_constant1_[i] = 1.0 / m;
-                min_constant2_[i] = -1.0 / (m * m);
+                min_bound_[i] = 1.0 / (1 + m);
+                if (m==1) {
+                    min_constant1_[i] = 1.0; 
+                    min_constant2_[i] = 0.0;
+                } else {
+                    min_constant1_[i] = 1.0 / m;
+                    min_constant2_[i] = -1.0 / (m * m);
+                }
                 max_constant1_[i] = 1.0 / m2;
                 max_constant2_[i] = -1.0 / (m2 * m2);
             }
 
         }
 
-        std::vector<uint16_t> & compute_min_thresholds(double dist, size_t q_len) {
+        std::vector<uint16_t> & compute_min_thresholds_hs(double dist, size_t q_len) {
             auto const &hist_sums = hists_.totals();
             double alpha = 1.0 - dist;
             for (size_t i=0; i<hists_.size(); i++){
                 if (hist_sums[i] == 0) {
                     threshold_scratch_[i] = std::numeric_limits<uint16_t>::max(); 
                 } else {
-                    threshold_scratch_[i] = (hist_sums[i] + q_len) * alpha * ( min_constant1_[i] + min_constant2_[i] * alpha); 
+                    double hs_product = std::min(min_bound_[i], alpha * ( min_constant1_[i] + min_constant2_[i] * alpha) );
+                    uint16_t raw_t = static_cast<uint16_t>((hist_sums[i] + q_len) * hs_product);
+                    threshold_scratch_[i] = std::min(raw_t, static_cast<uint16_t>(q_len)); 
+                }
+            }
+            return threshold_scratch_;
+        }
+
+        std::vector<uint16_t> & compute_min_thresholds(double dist, size_t q_len) {
+            auto const &hist_sums = hists_.totals();
+            auto const &maximums = hists_.maximums();
+            
+            // alpha represents the target containment score (1.0 - d*)
+            //double relaxed_dist = std::min(1.0, dist + 0.05);
+            double alpha = 1.0 - dist; 
+            double q_len_d = static_cast<double>(q_len);
+            
+            for (size_t i = 0; i < hists_.size(); i++){
+                if (hist_sums[i] == 0) {
+                    threshold_scratch_[i] = std::numeric_limits<uint16_t>::max(); 
+                } else {
+                    double n_sum = static_cast<double>(hist_sums[i]);
+                    double n_max = static_cast<double>(maximums[i]);
+                    double max_possible_s = q_len_d;
+                    // EXACT ALGEBRAIC FORMULA FROM THESIS EQUATION (6a):
+                    // Executing this exact step eliminates all approximation noise,
+                    // ensuring thresholds never overshoot the real candidate limits.
+                    //if (n_max * max_possible_s <= n_sum) {
+                        double exact_raw_s = ((alpha * (n_sum + q_len_d)) / (n_max + alpha) );
+                    
+                        // Safe floor conversion to provide a guaranteed lower bound
+                        uint16_t computed_threshold = static_cast<uint16_t>(std::max(0.0, std::floor(exact_raw_s)));
+                        // Clamp directly to the query length constraint
+                        threshold_scratch_[i] = std::min(computed_threshold, static_cast<uint16_t>(max_possible_s));
+                    /*} else {
+                        // Corner Case: Inequality (7a)
+                        // If alpha is small or n_sum is large, this boundary can drop below 0.
+                        double exact_raw_s = n_sum + q_len_d - (n_sum / alpha);
+                        
+                        if (exact_raw_s <= 0.0) {
+                            // If the bound is negative, this cluster cannot be safely pruned.
+                            // Set threshold to 0 so it always passes the filter agent.
+                            threshold_scratch_[i] = 0;
+                        } else {
+                            uint16_t computed_threshold = static_cast<uint16_t>(std::max(0.0, std::floor(exact_raw_s)));
+                            threshold_scratch_[i] = std::min(computed_threshold, static_cast<uint16_t>(q_len));
+                        }
+                    }*/
+                    
+                    
                 }
             }
             return threshold_scratch_;
