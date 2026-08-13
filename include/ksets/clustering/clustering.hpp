@@ -200,7 +200,7 @@ ClusterResult cluster_cpp(
         } // Iteration over Data rows
 
         //4.2 Stop if error increases
-        if (sdth > sdth_old) {
+        if ((sdth > sdth_old) && (j > 1)) {
             //std::cout << std::format("Error Increased: sdth={0:0.6f} > sdth_old={1:0.6f}\n", sdth, sdth_old);
             reason = EndReason::DistanceIncreased; 
             sumd = sumd_prev;
