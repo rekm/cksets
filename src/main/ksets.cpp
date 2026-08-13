@@ -6,6 +6,7 @@
 #include <ksets/histogram/collection_map.hpp>
 #include <ksets/hashing/murmur_hash.hpp>
 #include <ksets/token_encoder/reversible.hpp>
+#include <ksets/memory/pool_allocator.hpp>
 #include <ksets/clustering/clustering.hpp>
 #include <ksets/clustering/histogram_update_memorize_changes.hpp>
 #include <ksets/clustering/histogram_update_ksets_authors.hpp>
@@ -131,7 +132,17 @@ int main(int argc, char ** argv)
         return 0; 
     } 
     std::cerr << " ---- Algorithm ---- \n"; 
+    // Define the value type required by your allocator policy
+    //using MapValueType = std::pair<const ksets::token_t, ksets::label_t>;
+
+    // Define the Pool Allocator Type with configuration settings
+    /*using CustomPoolAllocator = ksets::memory::PoolAllocator<
+        MapValueType, 
+        4096,   // Block size (number of pairs per block block)
+        false   // Set to true if multiple threads mutate the same map instance
+    >;*/
     auto hash_policy = ksets::hashing::HashPolicy<ksets::hashing::MurmurHash>(ksets::hashing::MurmurHash(seed));
+    //ksets::histogram::MapHistogramCollection<decltype(hash_policy), CustomPoolAllocator> hist_collection(number_of_clusters, hash_policy);
     ksets::histogram::MapHistogramCollection<decltype(hash_policy)> hist_collection(number_of_clusters, hash_policy);
     std::cerr << "Preselect Strategy: " << preselect << "\n";
     std::cerr << "Histogram Construction: " << hist_rebuild << "\n";
