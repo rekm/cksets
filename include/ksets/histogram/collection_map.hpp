@@ -4,6 +4,8 @@
 #include <ksets/types.hpp>
 #include <ksets/histogram/map.hpp>
 #include <ksets/histogram/map_gtlflatmap.hpp>
+#include <ksets/histogram/map_gtlflatmap_singletons.hpp>
+#include <ksets/histogram/map_gtlflatmap_ignore_singletons.hpp>
 #include <ksets/histogram/map_robin.hpp>
 #include <ksets/histogram/collection_base.hpp>
 
@@ -16,7 +18,7 @@ template <typename HashPolicy, typename AllocatorPolicy = std::allocator<std::pa
 class MapHistogramCollection
     : public BaseHistogramCollection<MapHistogramCollection<HashPolicy, AllocatorPolicy>>
 {
-    using MapHistType = ksets::histogram::MapGtlFlatmapHistogram<HashPolicy, AllocatorPolicy>;
+    using MapHistType = ksets::histogram::MapGtlFlatmapIgnoreSingletonHistogram<HashPolicy, AllocatorPolicy>;
     //using MapHistType = ksets::histogram::MapRobinHistogram<HashPolicy, AllocatorPolicy>;
     std::vector<MapHistType> histograms_;
     size_t K_;
