@@ -20,7 +20,7 @@ cache:
   key: micromamba-env
   paths:
     - /opt/conda/envs        
-    - .cache/pip              
+    #- .cache/pip              
 
 .setup_env:
   before_script:
