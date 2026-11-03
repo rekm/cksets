@@ -4,9 +4,6 @@
 #include <ksets/types.hpp>
 #include <ksets/histogram/map.hpp>
 #include <ksets/histogram/map_gtlflatmap.hpp>
-#include <ksets/histogram/map_gtlflatmap_singletons.hpp>
-#include <ksets/histogram/map_gtlflatmap_ignore_singletons.hpp>
-#include <ksets/histogram/map_robin.hpp>
 #include <ksets/histogram/collection_base.hpp>
 
 namespace ksets::histogram {
@@ -14,11 +11,14 @@ namespace ksets::histogram {
 using MapVal = hist_count_t;
 
 
-template <typename HashPolicy, typename AllocatorPolicy = std::allocator<std::pair<const token_t,label_t>>>
+template < 
+    typename HashPolicy,
+    template<typename, typename> typename MapTemplate = ksets::histogram::MapGtlFlatmapHistogram,
+    typename AllocatorPolicy = std::allocator<std::pair<const token_t,label_t>>>
 class MapHistogramCollection
-    : public BaseHistogramCollection<MapHistogramCollection<HashPolicy, AllocatorPolicy>>
+    : public BaseHistogramCollection<MapHistogramCollection< HashPolicy, MapTemplate, AllocatorPolicy>>
 {
-    using MapHistType = ksets::histogram::MapGtlFlatmapIgnoreSingletonHistogram<HashPolicy, AllocatorPolicy>;
+    using MapHistType = MapTemplate<HashPolicy, AllocatorPolicy>;
     //using MapHistType = ksets::histogram::MapRobinHistogram<HashPolicy, AllocatorPolicy>;
     std::vector<MapHistType> histograms_;
     size_t K_;
@@ -42,12 +42,12 @@ public:
     MapHistType& operator[](size_t i) { return histograms_[i]; }
     const MapHistType& operator[](size_t i) const { return histograms_[i]; }
 
-    bool increment(size_t cluster, const token_t& token) {
+    bool increment_impl(size_t cluster, const token_t& token) {
         invalidate_cache();
         return histograms_[cluster].increment(token);
     }
 
-    bool decrement(size_t cluster, const token_t& token) {
+    bool decrement_impl(size_t cluster, const token_t& token) {
         invalidate_cache();
         return histograms_[cluster].decrement(token);
     }
@@ -74,6 +74,10 @@ public:
 
     MapVal get(size_t cluster, const token_t& token) const {
         return histograms_[cluster].get(token);
+    }
+
+    void set_impl(size_t cluster, const token_t& token, MapVal val){
+        histograms_[cluster].set(token, val);
     }
 
     void zero_out() {
