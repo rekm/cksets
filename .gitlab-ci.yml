@@ -103,6 +103,10 @@ py_build:
   artifacts:
     paths:
       - build/*
+    exclude:
+      - build/_deps/**/*
+      - build/**/CMakeFiles/**/*
+      - build/**/*.o
 
 cpp_build:
   stage: build
@@ -115,6 +119,10 @@ cpp_build:
   artifacts:
     paths:
       - c_build/*
+    exclude:
+      - c_build/_deps/**/*
+      - c_build/**/CMakeFiles/**/*
+      - c_build/**/*.o
   
 
 
