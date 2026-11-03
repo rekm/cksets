@@ -8,17 +8,35 @@
 
 namespace ksets::histogram {
 
+    class IHistogramCollection {
+        public:
+            virtual ~IHistogramCollection() = default;
+            
+            // Define the uniform API your users need to fill from files/NumPy
+            virtual size_t size() const = 0;
+            virtual bool increment(size_t cluster, const token_t& token) = 0;
+            virtual bool decrement(size_t cluster, const token_t& token) = 0;
+            virtual void set(size_t cluster, const token_t& token, hist_count_t value) = 0;  
+    };
+
+
     template <typename Derived>
-    class BaseHistogramCollection {
+    class BaseHistogramCollection : public IHistogramCollection {
     protected:
         Derived& derived() { return static_cast<Derived&>(*this); }
         const Derived& derived() const { return static_cast<const Derived&>(*this); }
 
     public:
         // Increment token in the collection
-        void add_token(const token_t& token) {
-            derived().increment(token);
+
+        bool increment(size_t cluster, const token_t& token){
+            return derived().increment_impl(cluster, token);
         }
+
+        bool decrement(size_t cluster, const token_t& token){
+            return derived().decrement_impl(cluster, token);
+        }
+        
 
         void zero_out(){
             derived().zero_out();
@@ -31,6 +49,10 @@ namespace ksets::histogram {
         // Get token count for a single histogram (default: first histogram)
         hist_count_t get(const token_t& token) const {
             return derived().get(token);
+        }
+
+        void set(size_t cluster, const token_t& token, hist_count_t value) {
+            derived().set_impl(cluster, token, value);
         }
 
         /*auto get_range(const std::vector<size_t>&& indices) {
