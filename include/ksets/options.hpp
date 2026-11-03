@@ -18,6 +18,14 @@ enum class HashStrategy : uint8_t {
     murmur, prehashed
 };
 
+enum class CollectionType : uint8_t {
+    mapGtlFlat, mapRobin 
+};
+
+enum class HistogramSingletonStrategy : uint8_t {
+    ignore, remove, track_separate
+};
+
 
 struct ClusterOptions
 {
@@ -26,10 +34,12 @@ struct ClusterOptions
     size_t max_iterations = 50;
     uint64_t seed = 42;
 
-    HashStrategy      hash      = HashStrategy::murmur;
-    DistanceType      distance  = DistanceType::jaccard;
-    HistogramRebuild  rebuild   = HistogramRebuild::full;
-    PreselectStrategy preselect = PreselectStrategy::ibf;
+    HashStrategy                hash       = HashStrategy::murmur;
+    DistanceType                distance   = DistanceType::jaccard;
+    HistogramRebuild            rebuild    = HistogramRebuild::full;
+    PreselectStrategy           preselect  = PreselectStrategy::ibf;
+    CollectionType              hist_type  = CollectionType::mapGtlFlat;
+    HistogramSingletonStrategy hist_singletons = HistogramSingletonStrategy::ignore; 
 };
 
 } // namespace ksets 
