@@ -95,6 +95,26 @@ public:
         std::cout << "\n";
     }
 
+    hist_count_t maximum() const {
+        auto it = std::max_element(
+                freq.begin(), freq.end(),
+                [](const auto& a, const auto& b) {
+                    return a.second < b.second;
+                }
+            );
+        return (it == freq.end()) ? hist_count_t{} : it->second;
+    }
+
+    hist_count_t minimum() const {
+        auto it = std::min_element(
+                freq.begin(), freq.end(),
+                [](const auto& a, const auto& b) {
+                    return a.second < b.second;
+                }
+            );
+        return (it == freq.end()) ? hist_count_t{} : it->second;
+    }
+
     hist_count_t total() const {
         hist_count_t sum = 0;
         for (const auto& kv : freq) {
