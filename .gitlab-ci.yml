@@ -97,7 +97,7 @@ py_build:
     - .setup_env
     - .default_rules
   script:
-    - rm -rf build/ *.egg-info/ .pytest_cache/
+    - rm -rf build
     - pip install .
     # run the command here
   artifacts:
