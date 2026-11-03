@@ -49,7 +49,23 @@ ClusterResult cluster(
     ClusterOptions const& options = {},
     Telemetry telemetry = {})
 {
-    return detail::cluster_dispatch(data,options,user_histograms, telemetry);
+    return detail::cluster_dispatch(data,options,&user_histograms, telemetry);
+}
+
+template<
+    std::ranges::forward_range Data, 
+    typename Telemetry = telemetry::NullSink>
+ClusterResult cluster(
+    const Data& data,
+    const std::unique_ptr<histogram::IHistogramCollection>& user_collection_ptr, 
+    const ClusterOptions& options = {},
+    Telemetry telemetry = {})
+{
+    if (!user_collection_ptr) {
+        throw std::invalid_argument("Provided histogram collection pointer is null.");
+    }
+    
+    return cluster(data, *user_collection_ptr, options, telemetry);
 }
 
 
