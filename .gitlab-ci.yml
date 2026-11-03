@@ -24,6 +24,7 @@ cache:
 
 .setup_env:
   before_script:
+    - apt-get update && apt-get install -y build-essential binutils
     - micromamba create --yes python=$BASE_PYTHON -f build_env.yml -n ${BUILD_ENVNAME} || micromamba update --yes python=$BASE_PYTHON -f build_env.yml -n ${BUILD_ENVNAME}
     - eval "$(micromamba shell hook --shell=bash)"
     - micromamba install -y -n ${BUILD_ENVNAME} -c conda-forge git
