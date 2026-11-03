@@ -16,7 +16,8 @@ namespace ksets::histogram {
             virtual size_t size() const = 0;
             virtual bool increment(size_t cluster, const token_t& token) = 0;
             virtual bool decrement(size_t cluster, const token_t& token) = 0;
-            virtual void set(size_t cluster, const token_t& token, hist_count_t value) = 0;  
+            virtual void set(size_t cluster, const token_t& token, hist_count_t value) = 0;
+            virtual hist_count_t get(size_t cluster, const token_t& token) const = 0;   
     };
 
 
@@ -46,9 +47,8 @@ namespace ksets::histogram {
             return derived().clone_empty_impl();
         }
 
-        // Get token count for a single histogram (default: first histogram)
-        hist_count_t get(const token_t& token) const {
-            return derived().get(token);
+        hist_count_t get(size_t cluster, const token_t& token) const {
+            return derived().get_impl(cluster, token);
         }
 
         void set(size_t cluster, const token_t& token, hist_count_t value) {

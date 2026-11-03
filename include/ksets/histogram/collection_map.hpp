@@ -72,7 +72,7 @@ public:
         invalidate_cache();
     }
 
-    MapVal get(size_t cluster, const token_t& token) const {
+    MapVal get_impl(size_t cluster, const token_t& token) const {
         return histograms_[cluster].get(token);
     }
 
