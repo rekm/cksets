@@ -72,6 +72,20 @@ public:
         invalidate_cache();
     }
 
+    void clear(size_t cluster){
+        histograms_[cluster].clear();
+    }
+
+    auto get_histogram_copy(size_t cluster){
+        return histograms_[cluster];
+    }
+
+    void set_histogram_from_copy(size_t cluster, MapHistType hist){
+        histograms_[cluster] = hist; 
+    }
+
+    
+
     MapVal get_impl(size_t cluster, const token_t& token) const {
         return histograms_[cluster].get(token);
     }

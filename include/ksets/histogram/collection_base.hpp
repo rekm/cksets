@@ -55,6 +55,13 @@ namespace ksets::histogram {
             derived().set_impl(cluster, token, value);
         }
 
+        
+        void set_histogram_from_data(size_t cluster, const std::vector<token_t>& data_row){
+            for (auto const& token : data_row) {
+                increment(cluster, token);
+            }
+    }
+
         /*auto get_range(const std::vector<size_t>&& indices) {
             //std::cout << "Old Range fired\n";
             Derived* self = static_cast<Derived*>(this);
