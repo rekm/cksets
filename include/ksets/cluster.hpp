@@ -24,6 +24,24 @@ ClusterResult cluster(
     return detail::cluster_dispatch(data, options, telemetry);
 }
 
+
+/**
+ * @brief Workflow 1: End-to-end K-Swaps clustering.
+ * Generates an internal histogram collection matching the options automatically.
+ */
+template<
+    std::ranges::forward_range Data,
+    typename Telemetry = telemetry::NullSink
+>
+ClusterResult cluster_swaps(
+    Data const& data,
+    uint swap_iter = 3000, 
+    ClusterOptions const& options = {},
+    Telemetry telemetry = {})
+{
+    return detail::cluster_dispatch(data, options, telemetry, swap_iter);
+}
+
 /**
  * @brief Factory: Provides an empty histogram collection matching the configuration.
  * Users can fill this handle sequentially from files, streams, or Python/NumPy loops.

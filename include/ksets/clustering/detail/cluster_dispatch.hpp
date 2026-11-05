@@ -26,6 +26,7 @@ namespace ksets::detail {
             const Data& data,
             const ClusterOptions& options,
             const Telemetry& telemetry,
+            uint swap_iter,
             histogram::IHistogramCollection* user_collection = nullptr){
         
         return ksets::detail::dispatch_collection(options, [&](auto&& collection) {
@@ -37,19 +38,37 @@ namespace ksets::detail {
                     if (!concrete_ptr) {
                         throw std::runtime_error("ClusterOptions do not match the internal layout of the provided collection!");
                     }
+                    if (swap_iter == 0){
+                        return cluster_cpp<TargetConcreteType, Updater, Preselect, Distance>(
+                            data, options.clusters, options.max_hist_length,
+                            *concrete_ptr, // Use user's pre-populated instance
+                            options.max_iterations, options.seed, telemetry
+                        );
+                    } else {
+                        return cluster_swap_cpp<TargetConcreteType, Updater, Preselect, Distance>(
+                            data, options.clusters, options.max_hist_length,
+                            *concrete_ptr, // Use user's pre-populated instance
+                            swap_iter, options.max_iterations, options.seed, telemetry
+                        );
+
+                    }
                     
-                    return cluster_cpp<TargetConcreteType, Updater, Preselect, Distance>(
-                        data, options.clusters, options.max_hist_length,
-                        *concrete_ptr, // Use user's pre-populated instance
-                        options.max_iterations, options.seed, telemetry
-                    );
                 } else {
-                    // WORKFLOW A: Original behavior. Use the internally allocated collection.
-                    return cluster_cpp<TargetConcreteType, Updater, Preselect, Distance>(
-                        data, options.clusters, options.max_hist_length,
-                        collection, // Use freshly allocated instance
-                        options.max_iterations, options.seed, telemetry
-                    );
+                    if (swap_iter == 0){
+                        return cluster_cpp<TargetConcreteType, Updater, Preselect, Distance>(
+                            data, options.clusters, options.max_hist_length,
+                            collection, // Use freshly allocated instance
+                            options.max_iterations, options.seed, telemetry
+                        );
+                    } else {
+                        return cluster_swap_cpp<TargetConcreteType, Updater, Preselect, Distance>(
+                            data, options.clusters, options.max_hist_length,
+                            collection, // Use freshly allocated instance
+                            swap_iter, options.max_iterations, options.seed, telemetry
+                        );
+
+                    }
+                    
                 }
             });
         }   
@@ -65,15 +84,16 @@ namespace ksets::detail {
             const Data& data,
             const ClusterOptions& options,
             const Telemetry& telemetry,
+            uint swap_iter, 
             histogram::IHistogramCollection* user_collection = nullptr){
         switch (options.preselect){
             case PreselectStrategy::none:
                 return run<Hash, Distance, Updater, HistPreselectNothing>(
-                    data, options, telemetry, user_collection);
+                    data, options, telemetry, swap_iter, user_collection);
 
             case PreselectStrategy::ibf:
                 return run<Hash, Distance, Updater, HistPreselectIBF>(
-                    data, options, telemetry, user_collection);
+                    data, options, telemetry, swap_iter, user_collection);
         }
         std::unreachable();
     }
@@ -88,15 +108,16 @@ namespace ksets::detail {
             const Data& data,
             const ClusterOptions& options,
             const Telemetry& telemetry,
+            uint swap_iter, 
             histogram::IHistogramCollection* user_collection = nullptr){
         switch (options.rebuild){
             case HistogramRebuild::full:
                 return dispatch_preselect<Hash, Distance, HistUpdaterKsetsAuthors>(
-                    data, options, telemetry, user_collection);
+                    data, options, telemetry, swap_iter, user_collection);
 
             case HistogramRebuild::update:
                 return dispatch_preselect<Hash, Distance, HistUpdaterMemorizeChanges>(
-                    data, options, telemetry, user_collection);
+                    data, options, telemetry, swap_iter, user_collection);
         }
         std::unreachable();
     }
@@ -110,11 +131,12 @@ namespace ksets::detail {
             const Data& data,
             const ClusterOptions& options,
             const Telemetry& telemetry,
+            uint swap_iter,
             histogram::IHistogramCollection* user_collection = nullptr){
         switch (options.distance){
             case DistanceType::jaccard:
                 return dispatch_rebuild<Hash, distance::JaccardDistance>(
-                    data, options, telemetry, user_collection);
+                    data, options, telemetry, swap_iter, user_collection);
 
             /*case DistanceType::cosine:
                 return dispatch_rebuild<Hash, distance::CosineDistance>(
@@ -131,15 +153,16 @@ namespace ksets::detail {
             const Data& data,
             const ClusterOptions& options,
             histogram::IHistogramCollection* user_collection,
-            const Telemetry& telemetry){
+            const Telemetry& telemetry, 
+            uint swap_iter=0){
         switch (options.hash){
             case HashStrategy::murmur:
                 return dispatch_distance<hashing::MurmurHash>(
-                    data, options, telemetry, user_collection);
+                    data, options, telemetry, swap_iter, user_collection);
 
             case HashStrategy::prehashed:
                 return dispatch_distance<hashing::IdentityHash>(
-                    data, options, telemetry, user_collection);
+                    data, options, telemetry, swap_iter, user_collection);
         }
         std::unreachable();
     }
@@ -151,15 +174,16 @@ namespace ksets::detail {
     ClusterResult cluster_dispatch(
             const Data& data,
             const ClusterOptions& options,
-            const Telemetry& telemetry){
+            const Telemetry& telemetry, 
+            uint swap_iter=0){
         switch (options.hash){
             case HashStrategy::murmur:
                 return dispatch_distance<hashing::MurmurHash>(
-                    data, options, telemetry);
+                    data, options, telemetry, swap_iter);
 
             case HashStrategy::prehashed:
                 return dispatch_distance<hashing::IdentityHash>(
-                    data, options, telemetry);
+                    data, options, telemetry, swap_iter);
         }
         std::unreachable();
     }

@@ -61,5 +61,12 @@ TEST_F(test_api, simple_api_test_histograms){
     ksets::ClusterResult res1; 
     res1 = ksets::cluster(data,hists,opts);
     std::cerr << "Objective Score First Run: " << res1.objective << " Iterations: " << res1.iterations <<"\n";
-    EXPECT_EQ(true,false);
+}
+
+TEST_F(test_api, simple_api_kswaps_test){
+    std::vector<std::vector<ksets::token_t>> data{{1,2,3,4,5}, {6,2,5,4}, {2,3,4,8}, {2,1,4,7}, {1,2,3,4}};
+    ksets::ClusterOptions opts{.clusters=2, .max_iterations=3};
+    ksets::ClusterResult res1; 
+    res1 = ksets::cluster_swaps(data,3,opts);
+    std::cerr << "Objective Score First Run: " << res1.objective << " Iterations: " << res1.iterations <<"\n";
 }
