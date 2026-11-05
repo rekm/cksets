@@ -99,9 +99,7 @@ ClusterResult cluster_cpp(
             size_t index = indices[i];
             labels_cur[index] = i; 
             is_seed_row[index] = true;
-            for (auto const& token : data[index]) {
-                histograms.increment(i, token);
-            }
+            histograms.set_histogram_from_data(i, data[index]);
         }
         histograms_provided = true; 
     }
@@ -251,6 +249,51 @@ ClusterResult cluster_cpp(
     return {labels_cur, j, sdth};
 }
 
+
+template <class HistogramCollection, 
+          template<class, class> class HistogramUpdatePolicy,
+          template<class, class> class HistogramPreselectPolicy,
+          template<class> class DistancePolicy = distance::JaccardDistance,
+          class EmptyClusterPolicy = EmptyClusterKeep,
+          telemetry::TelemetrySink Sink = telemetry::NullSink>
+ClusterResult cluster_swap_cpp(
+        const std::vector<std::vector<token_t>> & data,
+        int K,
+        int max_hist_length,
+        HistogramCollection& histograms,
+        size_t max_swap_iter, 
+        int max_iter = 3, 
+        int seed = 42,
+        Sink sink = {}){
+    ClusterResult old_result{};
+    ClusterResult curr_result = cluster_cpp<HistogramCollection, HistogramUpdatePolicy, HistogramPreselectPolicy, DistancePolicy>(
+                        data, K, max_hist_length,
+                        histograms, 
+                        max_iter, seed, sink
+                    );
+    
+    std::uniform_int_distribution<uint64_t> cluster_selector(0, K-1);
+    std::uniform_int_distribution<uint64_t> data_selector(0, data.size() - 1);
+    std::mt19937_64 rng(seed);
+    for (size_t swap_iter=0; swap_iter<max_swap_iter; swap_iter++){
+        uint64_t target_cluster = cluster_selector(rng);
+        uint64_t target_data_row = data_selector(rng);
+        old_result = curr_result; 
+        auto old_histogram = histograms.get_histogram_copy(target_cluster);
+        histograms.clear(target_cluster);
+        histograms.set_histogram_from_data(target_cluster, data[target_data_row]);
+        curr_result = cluster_cpp<HistogramCollection, HistogramUpdatePolicy, HistogramPreselectPolicy, DistancePolicy>(
+                        data, K, max_hist_length,
+                        histograms, 
+                        max_iter, seed ^ swap_iter, sink
+                    );
+        if (curr_result.objective > old_result.objective){
+            curr_result = old_result;
+            histograms.set_histogram_from_copy(target_cluster, old_histogram);
+        }
+    }
+    return curr_result; 
+}
 
 }
 
